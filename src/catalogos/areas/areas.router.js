@@ -1,4 +1,5 @@
-// Router para clientes
+    // Router para clientes
+    // Router para clientes
 const express = require("express");
 const router = express.Router();
 const { getAreas } = require("./areas.controller");

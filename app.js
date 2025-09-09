@@ -6,7 +6,7 @@ const { ConnectionDatabaseAuthenticated } = require('./config/connectDatabase.js
 const cookieParser = require('cookie-parser');
 
 // Importar modelos para establecer asociacione
-require('./src/models/index');
+require('./src/models'); // modelo de prodyctis
 
 config();
 const app = express();
@@ -16,11 +16,11 @@ app.use(cookieParser());
 // Configuración CORS mejoradas
 const corsOptions = {
     credentials: true,
-    origin: process.env.ORIGIN || 'http://localhost:4000', // Usar valor de .env o por defecto localhost:4000
+    origin: process.env.ORIGIN || 'http://localhost:5173', // Usar valor de .env o por defecto localhost:4000
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 };
-app.use(cors(corsOptions));
+app.use(cors());
 
 app.use(express.json()); // Poder obtener JSON de las peticiones
 app.use(express.text()); // Poder obtener texto de las peticiones
