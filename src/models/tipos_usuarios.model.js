@@ -1,9 +1,9 @@
 const { ConnectionDatabase } = require("../../config/connectDatabase");
 const { DataTypes } = require("sequelize");
 
-const CatalogoAreasModel = ConnectionDatabase.define('CatalogoAreasModel', {
-    ck_area: {
-        type: DataTypes.CHAR(6),
+const CatalogoUsuariosModel = ConnectionDatabase.define('CatalogoUsuariosModel', {
+    ck_tipo_usuario: {
+        type: DataTypes.CHAR(36),
         defaultValue: DataTypes.UUIDV4,
         allowNull: false,
         primaryKey: true
@@ -13,21 +13,21 @@ const CatalogoAreasModel = ConnectionDatabase.define('CatalogoAreasModel', {
         allowNull: false,
         defaultValue: 'ACTIVO'
     },
-    s_area: {
+    s_tipo_usuario: {
         type: DataTypes.STRING(100),
         allowNull: false
     },
-    s_descripcion_area: {
+    s_descripcion_tipo_usuario: {
         type: DataTypes.STRING(1000),
         allowNull: true
     },
-    c_codigo_area: {
+    c_codigo_tipo_usuario: {
         type: DataTypes.CHAR(6),
         allowNull: true
     },
 }, {
-    tableName: 'catalogo_area',
+    tableName: 'catalogo_tipos_usuarios',
     timestamps: false,
 });
 
-module.exports = CatalogoAreasModel;
+module.exports = CatalogoUsuariosModel;
