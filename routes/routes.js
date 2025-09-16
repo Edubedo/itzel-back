@@ -11,5 +11,8 @@ router.use("/catalogos/areas", require("../src/catalogos/areas/areas.router")); 
 // RUTA PARA SERVICIOS
 router.use("/catalogos/servicios", require("../src/catalogos/servicios/servicios.router")); // SERVICIOS
 
+// RUTA PARA USUARIOS
+router.use("/catalogos/usuarios", require("../src/catalogos/usuarios/usuarios.router")); // USUARIOS
+
 // ROUTER DE SECCIONES  
 module.exports = router;

@@ -26,9 +26,10 @@ app.use(express.json()); // Poder obtener JSON de las peticiones
 app.use(express.text()); // Poder obtener texto de las peticiones
 app.use(express.urlencoded({ extended: true })); // Poder obtener datos de formularios
 app.use(express.static('storage')); // Para poder acceder a la carpeta storage directamente
+app.use('/usuarios', express.static('storage/usuarios')); // Servir imágenes de usuarios
 
 // Rutas
-app.use('/api/', routerGlobal); // Llamas a las rutas
+app.use('/api', routerGlobal); // Llamas a las rutas
 
 // Middleware de manejo de errores
 app.use((err, req, res, next) => {

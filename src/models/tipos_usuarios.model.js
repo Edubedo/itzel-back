@@ -2,7 +2,7 @@ const { ConnectionDatabase } = require("../../config/connectDatabase");
 const { DataTypes } = require("sequelize");
 
 const CatalogoUsuariosModel = ConnectionDatabase.define('CatalogoUsuariosModel', {
-    ck_tipo_usuario: {
+    i_tipo_usuario: {
         type: DataTypes.CHAR(36),
         defaultValue: DataTypes.UUIDV4,
         allowNull: false,
