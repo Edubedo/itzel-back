@@ -5,9 +5,11 @@ const router = express.Router();
 // Importar router de autenticación
 router.use("/auth", require("../src/core/auth/auth.router")); // rutas de autenticacion
 
-// RUTA PARA AREAS // api/catalogos/areas/getAreas 
+// RUTA PARA AREAS
 router.use("/catalogos/areas", require("../src/catalogos/areas/areas.router")); // AREAS
 
+// RUTA PARA SERVICIOS
+router.use("/catalogos/servicios", require("../src/catalogos/servicios/servicios.router")); // SERVICIOS
 
 // ROUTER DE SECCIONES  
 module.exports = router;
