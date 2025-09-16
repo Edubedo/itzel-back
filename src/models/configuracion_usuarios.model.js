@@ -42,11 +42,11 @@ const ConfiguracionUsuariosModel = ConnectionDatabase.define('ConfiguracionUsuar
         allowNull: true
     },
     s_password: {
-        type: DataTypes.STRING(50),
+        type: DataTypes.STRING(200),
         allowNull: true
     },
-    ck_tipo_usuario: {
-        type: DataTypes.CHAR(6),
+    i_tipo_usuario: {
+        type: DataTypes.INTEGER,
         allowNull: true
     },
     s_rfc: {
@@ -54,7 +54,7 @@ const ConfiguracionUsuariosModel = ConnectionDatabase.define('ConfiguracionUsuar
         allowNull: false
     },
     s_curp: {
-        type: DataTypes.STRING(13),
+        type: DataTypes.STRING(18),
         allowNull: false
     },
     s_domicilio: {
@@ -62,7 +62,7 @@ const ConfiguracionUsuariosModel = ConnectionDatabase.define('ConfiguracionUsuar
         allowNull: false
     },
     ck_sistema: {
-        type: DataTypes.char(36),
+        type: DataTypes.CHAR(36),
         allowNull: false
     },
 

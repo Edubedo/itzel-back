@@ -1,53 +1,49 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
-const UsuariosModel = require("../../models/usuarios.model")
+const ConfiguracionUsuariosModel = require('../../models/configuracion_usuarios.model');
 
 const SECRET_KEY = process.env.JWT_SECRET || "SECRET";
 const SALT_ROUNDS = 10; // Número de rondas para bcrypt
 
 const loginUsuario = async (req, res) => {
+    console.log("req.body: ", req.body)
     const { s_usuario, s_contrasena } = req.body;
     try {
         // Detectar si s_usuario es un email (contiene @) o un nombre de usuario
         const isEmail = s_usuario.includes('@');
         const whereCondition = isEmail ? 
             { s_correo_electronico: s_usuario } : 
-            { s_usuario: s_usuario };
+            { s_nombre: s_usuario }; // Buscar por nombre si no es email
 
-        const usuario = await UsuariosModel.findOne({ 
+        console.log("whereCondition: ", whereCondition)
+        const usuario = await ConfiguracionUsuariosModel.findOne({ 
             where: whereCondition,
             attributes: [
-                'uk_usuario', 
-                's_usuario', 
+                'ck_usuario', 
                 's_nombre', 
-                's_contrasena', 
                 's_correo_electronico',
-                'tipo_usuario',
-                'uk_cliente'
+                's_password',
+                'i_tipo_usuario'
             ]
         });
+        
         if (!usuario) {
             return res.status(404).json({ message: "Usuario o correo electrónico no encontrado" });
         }
 
         // Comparar la contraseña encriptada
-        const isPasswordValid = await bcrypt.compare(s_contrasena, usuario.s_contrasena);
+        const isPasswordValid =  await bcrypt.compare(s_contrasena, usuario.s_password);
         if (!isPasswordValid) {
             return res.status(401).json({ message: "Contraseña incorrecta" });
         }
 
-        // Generar token JWT incluyendo tipo_usuario y uk_cliente en el payload
+        // Generar token JWT incluyendo tipo_usuario en el payload
         const tokenPayload = { 
-            uk_usuario: usuario.uk_usuario, 
-            s_usuario: usuario.s_usuario, 
+            uk_usuario: usuario.ck_usuario, 
+            s_usuario: usuario.s_nombre, // Usar nombre como identificador de usuario
             s_nombre: usuario.s_nombre,
-            tipo_usuario: usuario.tipo_usuario || 3 // Por defecto Cliente
+            tipo_usuario: usuario.i_tipo_usuario || 3 // Por defecto Asesor
         };
-        
-        // Incluir uk_cliente en el token si el usuario es Cliente
-        if (usuario.tipo_usuario === 3 && usuario.uk_cliente) {
-            tokenPayload.uk_cliente = usuario.uk_cliente;
-        }
         
         const token = jwt.sign(
             tokenPayload,
@@ -56,48 +52,71 @@ const loginUsuario = async (req, res) => {
         );
 
         let dataRetornarUsuario = {
-            uk_usuario: usuario.uk_usuario,
+            uk_usuario: usuario.ck_usuario,
             s_nombre: usuario.s_nombre,
-            s_usuario: usuario.s_usuario,
+            s_usuario: usuario.s_nombre,
             s_correo_electronico: usuario.s_correo_electronico,
-            tipo_usuario: usuario.tipo_usuario || 3, // Incluir tipo_usuario en la respuesta
+            tipo_usuario: usuario.i_tipo_usuario || 3, // Incluir tipo_usuario en la respuesta
             token
         }
 
         return res.status(200).json({ message: "Login exitoso", ...dataRetornarUsuario });
     } catch (error) {
-        return res.status(500).json({ message: "Error en el servidor", error });
+        console.error('Error en login:', error);
+        return res.status(500).json({ message: "Error en el servidor", error: error.message });
     }
 };
 
 const registerUsuario = async (req, res) => {
     const { s_usuario, s_contrasena, s_correo_electronico, s_nombre } = req.body;
     try {
-        const existingUser = await UsuariosModel.findOne({ where: { s_usuario } });
+        const existingUser = await ConfiguracionUsuariosModel.findOne({ 
+            where: { s_correo_electronico } 
+        });
         if (existingUser) {
-            return res.status(400).json({ message: "El usuario ya existe" });
+            return res.status(400).json({ message: "El correo electrónico ya está registrado" });
         }
 
         // Encriptar la contraseña antes de guardarla
         const hashedPassword = await bcrypt.hash(s_contrasena, SALT_ROUNDS);
 
-        const newUser = await UsuariosModel.create({
-            s_usuario,
-            s_contrasena: hashedPassword,
+        const newUser = await ConfiguracionUsuariosModel.create({
+            s_nombre,
+            s_password: hashedPassword,
             s_correo_electronico,
-            s_nombre
+            i_tipo_usuario: 3, // Por defecto es cliente
+            s_rfc: 'TEMP000000000', // Valor temporal
+            s_curp: 'TEMP000000000', // Valor temporal
+            s_domicilio: 'No especificado', // Valor temporal
+            ck_sistema: '00000000-0000-0000-0000-000000000000' // UUID temporal
         });
 
         // Generar token JWT para el nuevo usuario
+        const tokenPayload = { 
+            uk_usuario: newUser.ck_usuario, 
+            s_usuario: newUser.s_nombre,
+            s_nombre: newUser.s_nombre,
+            tipo_usuario: newUser.i_tipo_usuario || 3
+        };
+
         const token = jwt.sign(
-            { id: newUser.id, s_usuario: newUser.s_usuario },
+            tokenPayload,
             SECRET_KEY,
             { expiresIn: "3d" }
         );
 
-        return res.status(201).json({ message: "Usuario registrado exitosamente", token });
+        return res.status(201).json({ 
+            message: "Usuario registrado exitosamente", 
+            uk_usuario: newUser.ck_usuario,
+            s_nombre: newUser.s_nombre,
+            s_usuario: newUser.s_nombre,
+            s_correo_electronico: newUser.s_correo_electronico,
+            tipo_usuario: newUser.i_tipo_usuario,
+            token 
+        });
     } catch (error) {
-        return res.status(500).json({ message: "Error en el servidor", error });
+        console.error('Error en registro:', error);
+        return res.status(500).json({ message: "Error en el servidor", error: error.message });
     }
 };
 
@@ -134,18 +153,16 @@ const refreshToken = async (req, res) => {
         const decoded = jwt.verify(token, SECRET_KEY);
         
         // Obtener datos actualizados del usuario desde la base de datos
-        const usuario = await UsuariosModel.findOne({
+        const usuario = await ConfiguracionUsuariosModel.findOne({
             where: { 
-                uk_usuario: decoded.uk_usuario,
-                ck_estado: 'ACTIVO'
+                ck_usuario: decoded.uk_usuario,
+                ck_estatus: 'ACTIVO'
             },
             attributes: [
-                'uk_usuario', 
-                's_usuario', 
+                'ck_usuario', 
                 's_nombre', 
                 's_correo_electronico',
-                'tipo_usuario',
-                'uk_cliente'
+                'i_tipo_usuario'
             ]
         });
 
@@ -158,16 +175,11 @@ const refreshToken = async (req, res) => {
 
         // Generar nuevo token con datos actualizados
         const tokenPayload = { 
-            uk_usuario: usuario.uk_usuario, 
-            s_usuario: usuario.s_usuario, 
+            uk_usuario: usuario.ck_usuario, 
+            s_usuario: usuario.s_nombre, 
             s_nombre: usuario.s_nombre,
-            tipo_usuario: usuario.tipo_usuario || 3
+            tipo_usuario: usuario.i_tipo_usuario || 3
         };
-        
-        // Incluir uk_cliente en el token si el usuario es Cliente
-        if (usuario.tipo_usuario === 3 && usuario.uk_cliente) {
-            tokenPayload.uk_cliente = usuario.uk_cliente;
-        }
         
         const newToken = jwt.sign(
             tokenPayload,
@@ -176,11 +188,11 @@ const refreshToken = async (req, res) => {
         );
 
         const dataRetornarUsuario = {
-            uk_usuario: usuario.uk_usuario,
+            uk_usuario: usuario.ck_usuario,
             s_nombre: usuario.s_nombre,
-            s_usuario: usuario.s_usuario,
+            s_usuario: usuario.s_nombre,
             s_correo_electronico: usuario.s_correo_electronico,
-            tipo_usuario: usuario.tipo_usuario || 3,
+            tipo_usuario: usuario.i_tipo_usuario || 3,
             token: newToken
         };
 
