@@ -342,9 +342,9 @@ const deleteUsuario = async (req, res) => {
             });
         }
 
-        // Soft delete - cambiar estatus a INACTIVO
+        // Soft delete - cambiar estatus a INACTI
         await ConfiguracionUsuariosModel.update(
-            { ck_estatus: 'INACTIVO' },
+            { ck_estatus: 'INACTI' },
             { where: { ck_usuario: id } }
         );
 
@@ -371,7 +371,7 @@ const getUsuariosStats = async (req, res) => {
             where: { ck_estatus: 'ACTIVO' }
         });
         const usuariosInactivos = await ConfiguracionUsuariosModel.count({
-            where: { ck_estatus: 'INACTIVO' }
+            where: { ck_estatus: 'INACTI' }
         });
 
         const adminCount = await ConfiguracionUsuariosModel.count({

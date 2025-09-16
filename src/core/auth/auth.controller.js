@@ -32,10 +32,7 @@ const loginUsuario = async (req, res) => {
         }
 
         // Comparar la contraseña encriptada
-        const isPasswordValid =  usuario.s_password == s_contrasena;
-        console.log("usuario.s_password. ", usuario.s_password)
-        console.log("s_contrasena. ", s_contrasena)
-        // await bcrypt.compare(s_contrasena, usuario.s_password);
+        const isPasswordValid =  await bcrypt.compare(s_contrasena, usuario.s_password);
         if (!isPasswordValid) {
             return res.status(401).json({ message: "Contraseña incorrecta" });
         }
