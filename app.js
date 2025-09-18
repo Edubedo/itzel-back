@@ -5,11 +5,16 @@ const routerGlobal = require('./routes/routes.js'); // Correct path to the route
 const { ConnectionDatabaseAuthenticated } = require('./config/connectDatabase.js');
 const cookieParser = require('cookie-parser');
 
+
+
 // Importar modelos para establecer asociacione
 require('./src/models/index.js'); // modelo de prodyctis
 
 config();
 const app = express();
+
+app.use(express.json());
+
 
 app.use(cookieParser());
 
