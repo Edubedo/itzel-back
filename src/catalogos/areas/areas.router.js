@@ -1,11 +1,26 @@
-    // Router para clientes
-    // Router para clientes
 const express = require("express");
 const router = express.Router();
-const { getAreas } = require("./areas.controller");
+const { 
+    getAllAreas, 
+    getAreaById, 
+    createArea, 
+    updateArea, 
+    deleteArea, 
+    getAreasStats,
+    getSucursales 
+} = require("./areas.controller");
+const authMiddleware = require("../../../middlewares/authMiddleware");
 
-router.get("/getAreas", getAreas);
+// Aplicar middleware de autenticación a todas las rutas
+router.use(authMiddleware);
 
-const routerAuth = router; // Asignamos el router a la constante routerAuth
+// Rutas para áreas
+router.get("/", getAllAreas);
+router.get("/stats", getAreasStats);
+router.get("/sucursales", getSucursales);
+router.get("/:id", getAreaById);
+router.post("/", createArea);
+router.put("/:id", updateArea);
+router.delete("/:id", deleteArea);
 
-module.exports = routerAuth; // Exportamos como routerAuth
+module.exports = router;
