@@ -81,4 +81,4 @@ const eliminarTurno = (req, res) => {
   res.send("Hola")
 }
 
-module.exports = { getTurnos, crearTurno, eliminarTurno };
+module.exports = { getTurnos, crearTurno, eliminarTurno, updateTurno };
