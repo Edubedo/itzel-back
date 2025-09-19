@@ -1,10 +1,11 @@
 const { ConnectionDatabase } = require("../../config/connectDatabase");
 const { DataTypes } = require("sequelize");
 
+
 const CatalogoAreasModel = ConnectionDatabase.define('CatalogoAreasModel', {
+    
     ck_area: {
-        type: DataTypes.CHAR(6),
-        defaultValue: DataTypes.UUIDV4,
+        type: DataTypes.CHAR(36),
         allowNull: false,
         primaryKey: true
     },
@@ -23,11 +24,16 @@ const CatalogoAreasModel = ConnectionDatabase.define('CatalogoAreasModel', {
     },
     c_codigo_area: {
         type: DataTypes.CHAR(6),
-        allowNull: true
+        allowNull: false,
+        unique: true
     },
+    ck_sucursal: {
+        type: DataTypes.CHAR(36),
+        allowNull: true
+    }
 }, {
-    tableName: 'catalogo_area',
-    timestamps: false,
+    tableName: 'catalogo_area', 
+    timestamps: false, // Deshabilitar timestamps automáticos
 });
 
 module.exports = CatalogoAreasModel;
