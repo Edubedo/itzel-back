@@ -1,16 +1,25 @@
+
 const { Router } = require("express");
 const { getTurnos, eliminarTurno, crearTurno, updateTurno } = require("./turnos.controller");
 
-const router = Router();
+const {
+  getTurnosPorSucursal,
+  getTurnoActual,
+  getProximosTurnos,
+  atenderTurnoActual,
+  terminarTurnoActual,
+  finalizarAtencion,
+} = require('./turnos.controller');
 
-// GET turnos por sucursal
-router.get("/obtenerTurnos", getTurnos);
+// Obtener todos los turnos de una sucursal
+router.get('/:sucursalId', getTurnosPorSucursal);
 
-// POST crear turno
+// Obtener turno actual
+router.get('/actual/:sucursalId', getTurnoActual);
 
-router.post("/crearTurnos", crearTurno);
-// POST eliminar turno
-router.post("/eliminarTurno", eliminarTurno);
+// Obtener próximos turnos
+router.get('/proximos/:sucursalId', getProximosTurnos);
+
 
 // PUT actualizar estado turno
 router.put("/actualizarTurno/:id", updateTurno);
