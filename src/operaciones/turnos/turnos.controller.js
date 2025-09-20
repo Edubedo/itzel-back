@@ -5,6 +5,7 @@ const CatalogoServiciosModel = require("../../models/servicios.model");
 const { Sucursal } = require("../../models/sucursales.model");
 const { ConnectionDatabase } = require("../../../config/connectDatabase");
 const crypto = require('crypto');
+const { generateTicketPDF } = require("../../utils/pdfGenerator");
 
 // Obtener todas las sucursales
 const getSucursales = async (req, res) => {
@@ -249,9 +250,9 @@ const crearTurno = async (req, res) => {
 // Obtener todos los turnos con filtros
 const getTurnos = async (req, res) => {
   try {
+    let whereConditions = [];
     const { sucursalId, areaId, estatus } = req.query;
     
-    let whereConditions = ['ot.ck_estatus != "CERRADO"'];
     let replacements = {};
 
     if (sucursalId) {
@@ -270,7 +271,7 @@ const getTurnos = async (req, res) => {
     }
 
     const whereClause = whereConditions.length > 0 ? 
-      `WHERE ${whereConditions.join(' AND ')}` : '';
+      `AND ${whereConditions.join(' AND ')}` : '';
 
     const turnos = await ConnectionDatabase.query(`
       SELECT 
@@ -301,6 +302,7 @@ const getTurnos = async (req, res) => {
       LEFT JOIN catalogo_sucursales su ON su.ck_sucursal = ot.ck_sucursal
       LEFT JOIN catalogo_servicios cs ON cs.ck_servicio = ot.ck_servicio
       LEFT JOIN configuracion_usuarios cu ON cu.ck_usuario = ot.ck_usuario_atendio
+      WHERE ot.ck_estatus != 'ATENDI'
       ${whereClause}
       ORDER BY ot.i_numero_turno ASC
     `, {
@@ -338,7 +340,6 @@ const atenderTurno = async (req, res) => {
 
     turno.ck_estatus = 'PROCES';
     turno.d_fecha_atendido = new Date();
-    turno.t_tiempo_atendido = new Date();
     turno.ck_usuario_atendio = ck_usuario_atendio;
     
     await turno.save();
@@ -370,7 +371,7 @@ const finalizarTurno = async (req, res) => {
       });
     }
 
-    turno.ck_estatus = 'CERRADO';
+    turno.ck_estatus = 'ATENDI';
     await turno.save();
 
     res.json({ 
@@ -396,7 +397,7 @@ const getEstadisticasTurnos = async (req, res) => {
     let replacements = {};
     
     if (sucursalId) {
-      whereClause = 'WHERE ot.ck_sucursal = :sucursalId';
+      whereClause = 'AND  ot.ck_sucursal = :sucursalId';
       replacements.sucursalId = sucursalId;
     }
 
@@ -405,15 +406,15 @@ const getEstadisticasTurnos = async (req, res) => {
         COUNT(*) as total_turnos,
         SUM(CASE WHEN ck_estatus = 'ACTIVO' THEN 1 ELSE 0 END) as turnos_pendientes,
         SUM(CASE WHEN ck_estatus = 'PROCES' THEN 1 ELSE 0 END) as turnos_en_proceso,
-        SUM(CASE WHEN ck_estatus = 'CERRADO' THEN 1 ELSE 0 END) as turnos_atendidos,
+        SUM(CASE WHEN ck_estatus = 'ATENDI' THEN 1 ELSE 0 END) as turnos_atendidos,
         AVG(CASE 
-          WHEN ck_estatus = 'CERRADO' AND t_tiempo_atendido IS NOT NULL 
-          THEN TIMESTAMPDIFF(MINUTE, t_tiempo_espera, t_tiempo_atendido)
+          WHEN ck_estatus = 'ATENDI' AND t_tiempo_atendido IS NOT NULL 
+          THEN EXTRACT(EPOCH FROM (t_tiempo_atendido - t_tiempo_espera)) / 60
           ELSE NULL 
         END) as tiempo_promedio_atencion
       FROM operacion_turnos ot
+      WHERE DATE(d_fecha_creacion) = CURRENT_DATE
       ${whereClause}
-      AND DATE(t_tiempo_espera) = CURDATE()
     `, {
       replacements,
       type: QueryTypes.SELECT,
@@ -432,15 +433,87 @@ const getEstadisticasTurnos = async (req, res) => {
   }
 };
 
-module.exports = { 
+// Descargar ticket PDF
+const descargarTicketPDF = async (req, res) => {
+  try {
+    const { turnoId } = req.params;
+
+    // Obtener información completa del turno
+    const turno = await ConnectionDatabase.query(`
+      SELECT 
+        ot.ck_turno,
+        ot.i_numero_turno,
+        ot.ck_estatus,
+        ot.d_fecha_creacion,
+        ca.s_area,
+        cs.s_servicio,
+        su.s_nombre_sucursal,
+        su.s_domicilio,
+        CASE 
+          WHEN cs.i_es_para_clientes = 1 THEN 'Cliente'
+          ELSE 'Público en General'
+        END as tipo_cliente
+      FROM operacion_turnos ot
+      LEFT JOIN catalogo_area ca ON ca.ck_area = ot.ck_area
+      LEFT JOIN catalogo_servicios cs ON cs.ck_servicio = ot.ck_servicio
+      LEFT JOIN catalogo_sucursales su ON su.ck_sucursal = ot.ck_sucursal
+      WHERE ot.ck_turno = :turnoId
+    `, {
+      replacements: { turnoId },
+      type: QueryTypes.SELECT,
+    });
+
+    if (!turno || turno.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Turno no encontrado' 
+      });
+    }
+
+    const turnoData = turno[0];
+
+    // Preparar datos para el ticket
+    const ticketData = {
+      numeroTurno: turnoData.i_numero_turno,
+      ticketId: turnoData.ck_turno,
+      sucursal: turnoData.s_nombre_sucursal,
+      area: turnoData.s_area,
+      servicio: turnoData.s_servicio,
+      tipoCliente: turnoData.tipo_cliente,
+      fechaCreacion: turnoData.d_fecha_creacion,
+      tiempoEstimado: '15-30 min'
+    };
+
+    // Generar PDF
+    const pdfBuffer = await generateTicketPDF(ticketData);
+
+    // Configurar headers para descarga
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=ticket-${turnoData.i_numero_turno}.pdf`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+
+    // Enviar PDF
+    res.send(pdfBuffer);
+
+  } catch (error) {
+    console.error('Error al descargar ticket PDF:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al generar el ticket PDF' 
+    });
+  }
+};
+
+module.exports = {
   getSucursales,
   getAreasPorSucursal,
   getServiciosPorArea,
   crearTurno,
-  getTurnos, 
+  getTurnos,
   atenderTurno,
   finalizarTurno,
-  getEstadisticasTurnos
+  getEstadisticasTurnos,
+  descargarTicketPDF
 };
   
 

@@ -61,6 +61,11 @@ const OperacionTurnosModel = ConnectionDatabase.define('OperacionTurnosModel', {
     ck_usuario_creacion: {
         type: DataTypes.CHAR(36),
         allowNull: true
+    },
+    created_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        defaultValue: DataTypes.NOW
     }
 }, {
     tableName: 'operacion_turnos',
