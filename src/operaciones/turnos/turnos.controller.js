@@ -1,40 +1,44 @@
-const { ConnectionDatabase } = require('../../../config/connectDatabase');
-const { DataTypes } = require('sequelize');
-
-// Modelo simple de turnos
-const Turno = ConnectionDatabase.define('Turno', {
-  ck_turno: {
-    type: DataTypes.CHAR(36),
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true,
-  },
-  i_numero_turno: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-  },
-  ck_area: {
-    type: DataTypes.STRING(50),
-    allowNull: false,
-  },
-  ck_sucursal: {
-    type: DataTypes.CHAR(36),
-    allowNull: false,
-  },
-  ck_estatus: {
-    type: DataTypes.STRING(10),
-    allowNull: false,
-    defaultValue: 'PENDI',
-  },
-}, {
-  tableName: 'operacion_turnos',
-  timestamps: false,
-});
-
+const { Sequelize, QueryTypes } = require("sequelize");
+const OperacionTurnosModel = require("../../models/operacion_turnos.model");
+const { ConnectionDatabase } = require("../../../config/connectDatabase");
 // Obtener todos los turnos de una sucursal
-const getTurnosPorSucursal = async (req, res) => {
+const getTurnos = async (req, res) => {
+  console.log("messi")
   try {
-    const { sucursalId } = req.params;
-    const turnos = await Turno.findAll({ where: { ck_sucursal: sucursalId }, order: [['i_numero_turno', 'ASC']] });
+    //const turnos = await OperacionTurnosModel.findAll({
+      //order: [["i_numero_turno", "ASC"]],
+    //});
+
+    const turnos = await ConnectionDatabase.query(`
+      SELECT 
+opeturn.ck_turno,
+opeturn.ck_area,
+caarea.s_area,
+opeturn.i_seccion,
+opeturn.ck_estatus,
+opeturn.ck_cliente,
+CONCAT(catalogo_clientes.s_nombre, ' ', catalogo_clientes.s_apellido_paterno_cliente,' ', catalogo_clientes.s_apellido_materno_cliente ) AS nombre_cliente,
+opeturn.ck_sucursal,
+catasuc.s_domicilio,
+estado.s_estado,
+muni.s_municipio,
+opeturn.i_numero_turno,
+opeturn.t_tiempo_espera,
+opeturn.t_tiempo_atendido
+FROM operacion_turnos opeturn
+LEFT JOIN catalogo_area caarea  ON caarea.ck_area = opeturn.ck_area
+LEFT JOIN catalogo_clientes ON catalogo_clientes.ck_cliente = opeturn.ck_cliente
+LEFT JOIN catalogo_sucursales catasuc ON catasuc.ck_sucursal = opeturn.ck_sucursal
+LEFT JOIN catalogo_municipios muni ON muni.ck_municipio = catasuc.ck_municipio
+LEFT JOIN catalogo_estados estado ON estado.ck_estado = muni.ck_estado
+WHERE opeturn.ck_sucursal = '249c36c6-ad6f-404f-b5ac-914c71d7c67b'
+
+      `, {
+      type: QueryTypes.SELECT,
+    });
+
+    console.log("turnos. ", turnos)
+
     res.json(turnos);
   } catch (error) {
     console.error(error);
@@ -95,36 +99,7 @@ const terminarTurnoActual = async (req, res) => {
     const turno = await Turno.findByPk(id);
     if (!turno) return res.status(404).json({ message: 'Turno no encontrado' });
 
-    turno.ck_estatus = 'TERMI';
-    await turno.save();
-    res.json({ message: 'Turno terminado', turno });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Error al terminar turno' });
-  }
-};
 
-// Finalizar atención
-const finalizarAtencion = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const turno = await Turno.findByPk(id);
-    if (!turno) return res.status(404).json({ message: 'Turno no encontrado' });
+module.exports = { getTurnos, crearTurno, eliminarTurno, updateTurno };
+  
 
-    turno.ck_estatus = 'FINAL';
-    await turno.save();
-    res.json({ message: 'Atención finalizada', turno });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Error al finalizar atención' });
-  }
-};
-
-module.exports = {
-  getTurnosPorSucursal,
-  getTurnoActual,
-  getProximosTurnos,
-  atenderTurnoActual,
-  terminarTurnoActual,
-  finalizarAtencion,
-};
