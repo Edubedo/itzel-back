@@ -28,12 +28,18 @@ const loginUsuario = async (req, res) => {
         });
         
         if (!usuario) {
+            console.log("Usuario no encontrado");
             return res.status(404).json({ message: "Usuario o correo electrónico no encontrado" });
         }
 
+        console.log("Usuario encontrado:", usuario.s_nombre);
+
         // Comparar la contraseña encriptada
         const isPasswordValid =  await bcrypt.compare(s_contrasena, usuario.s_password);
+        console.log("Contraseña válida:", isPasswordValid);
+        
         if (!isPasswordValid) {
+            console.log("Contraseña incorrecta");
             return res.status(401).json({ message: "Contraseña incorrecta" });
         }
 

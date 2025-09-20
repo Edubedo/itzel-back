@@ -10,21 +10,30 @@ const Sucursal = ConnectionDatabase.define('Sucursal', {
   ck_estatus: {
     type: DataTypes.CHAR(6),
     allowNull: false,
+    defaultValue: 'ACTIVO'
   },
-  ck_area: {
-    type: DataTypes.STRING(50),
+  s_nombre_sucursal: {
+    type: DataTypes.STRING(200),
+    allowNull: false,
   },
-  i_seccion: {
-    type: DataTypes.INTEGER,
+  s_domicilio: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
   },
-  ck_cliente: {
-    type: DataTypes.STRING(36),
+  ck_municipio: {
+    type: DataTypes.CHAR(36),
+    allowNull: true,
   },
-  i_numero_turno: {
-    type: DataTypes.INTEGER,
+  s_telefono: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+  },
+  s_codigo_postal: {
+    type: DataTypes.STRING(10),
+    allowNull: true,
   }
 }, {
-  tableName: 'catalogo_sucursales', // la tabla
+  tableName: 'catalogo_sucursales',
   timestamps: false,
 });
 

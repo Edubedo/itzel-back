@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 const ConfiguracionUsuariosModel = require('../../models/configuracion_usuarios.model');
 const bcrypt = require("bcrypt");
 const { Op } = require("sequelize");
@@ -418,19 +417,3 @@ module.exports = {
     getUsuariosStats,
     upload
 }; 
-=======
-const CatalogoUsuariosModel = require("../../models/tipos_usuarios.model");
-
-const getUsuarios = async(req, res) => {
-
-    // enviar dsata
-    const response = await CatalogoUsuariosModel.findAll();
-    
-    console.log("response: ", response)
-    return res.json({usuarios: response,  message: "getUsuarios ok" });
-
-}
-
-
-module.exports = { getUsuarios };
->>>>>>> 9a1d9348dc1e30f31e01f64cc56a6e8501da84b1

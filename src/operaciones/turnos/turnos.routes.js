@@ -1,28 +1,30 @@
 
-const { Router } = require("express");
-const { getTurnos, eliminarTurno, crearTurno, updateTurno } = require("./turnos.controller");
+const express = require("express");
+const router = express.Router();
 
-const {
-  getTurnosPorSucursal,
-  getTurnoActual,
-  getProximosTurnos,
-  atenderTurnoActual,
-  terminarTurnoActual,
-  finalizarAtencion,
-} = require('./turnos.controller');
+const { 
+  getSucursales,
+  getAreasPorSucursal,
+  getServiciosPorArea,
+  crearTurno,
+  getTurnos, 
+  atenderTurno,
+  finalizarTurno,
+  getEstadisticasTurnos
+} = require("./turnos.controller");
 
-// Obtener todos los turnos de una sucursal
-router.get('/:sucursalId', getTurnosPorSucursal);
+// Rutas para obtener catálogos
+router.get('/sucursales', getSucursales);
+router.get('/areas/:sucursalId', getAreasPorSucursal);
+router.get('/servicios/:areaId', getServiciosPorArea);
 
-// Obtener turno actual
-router.get('/actual/:sucursalId', getTurnoActual);
+// Rutas para turnos
+router.get('/obtenerTurnos', getTurnos);
+router.post('/crear', crearTurno);
+router.put('/atender/:turnoId', atenderTurno);
+router.put('/finalizar/:turnoId', finalizarTurno);
 
-// Obtener próximos turnos
-router.get('/proximos/:sucursalId', getProximosTurnos);
-
-
-// PUT actualizar estado turno
-router.put("/actualizarTurno/:id", updateTurno);
-
+// Rutas para estadísticas
+router.get('/estadisticas', getEstadisticasTurnos);
 
 module.exports = router;

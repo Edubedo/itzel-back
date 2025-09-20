@@ -14,7 +14,7 @@ const CatalogoServiciosModel = ConnectionDatabase.define('CatalogoServiciosModel
         defaultValue: 'ACTIVO'
     },
     ck_area: {
-        type: DataTypes.CHAR(1),
+        type: DataTypes.CHAR(36),
         allowNull: false
     },
     s_servicio: {
@@ -31,7 +31,8 @@ const CatalogoServiciosModel = ConnectionDatabase.define('CatalogoServiciosModel
     },
     i_es_para_clientes: {
         type: DataTypes.INTEGER(16),
-        allowNull: true
+        allowNull: true,
+        defaultValue: 1
     },
 }, {
     tableName: 'catalogo_servicios',

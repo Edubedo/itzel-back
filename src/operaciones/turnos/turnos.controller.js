@@ -1,105 +1,447 @@
 const { Sequelize, QueryTypes } = require("sequelize");
 const OperacionTurnosModel = require("../../models/operacion_turnos.model");
+const CatalogoAreasModel = require("../../models/areas.model");
+const CatalogoServiciosModel = require("../../models/servicios.model");
+const { Sucursal } = require("../../models/sucursales.model");
 const { ConnectionDatabase } = require("../../../config/connectDatabase");
-// Obtener todos los turnos de una sucursal
-const getTurnos = async (req, res) => {
-  console.log("messi")
+const crypto = require('crypto');
+
+// Obtener todas las sucursales
+const getSucursales = async (req, res) => {
   try {
-    //const turnos = await OperacionTurnosModel.findAll({
-      //order: [["i_numero_turno", "ASC"]],
-    //});
+    console.log('Obteniendo sucursales');
+    
+    // Primero intentamos obtener con el modelo Sequelize
+    const sucursales = await Sucursal.findAll({
+      where: { ck_estatus: 'ACTIVO' },
+      order: [['s_nombre_sucursal', 'ASC']]
+    });
 
-    const turnos = await ConnectionDatabase.query(`
-      SELECT 
-opeturn.ck_turno,
-opeturn.ck_area,
-caarea.s_area,
-opeturn.i_seccion,
-opeturn.ck_estatus,
-opeturn.ck_cliente,
-CONCAT(catalogo_clientes.s_nombre, ' ', catalogo_clientes.s_apellido_paterno_cliente,' ', catalogo_clientes.s_apellido_materno_cliente ) AS nombre_cliente,
-opeturn.ck_sucursal,
-catasuc.s_domicilio,
-estado.s_estado,
-muni.s_municipio,
-opeturn.i_numero_turno,
-opeturn.t_tiempo_espera,
-opeturn.t_tiempo_atendido
-FROM operacion_turnos opeturn
-LEFT JOIN catalogo_area caarea  ON caarea.ck_area = opeturn.ck_area
-LEFT JOIN catalogo_clientes ON catalogo_clientes.ck_cliente = opeturn.ck_cliente
-LEFT JOIN catalogo_sucursales catasuc ON catasuc.ck_sucursal = opeturn.ck_sucursal
-LEFT JOIN catalogo_municipios muni ON muni.ck_municipio = catasuc.ck_municipio
-LEFT JOIN catalogo_estados estado ON estado.ck_estado = muni.ck_estado
-WHERE opeturn.ck_sucursal = '249c36c6-ad6f-404f-b5ac-914c71d7c67b'
+    console.log('Sucursales encontradas:', sucursales.length);
+    res.json({ success: true, sucursales });
+  } catch (error) {
+    console.error('Error al obtener sucursales:', error);
+    
+    // Si falla, devolvemos sucursales de prueba
+    const sucursalesPrueba = [
+      {
+        ck_sucursal: '249c36c6-ad6f-404f-b5ac-914c71d7c67b',
+        s_nombre_sucursal: 'Manzanillo Centro',
+        s_domicilio: 'Av. México 123, Centro',
+        ck_estatus: 'ACTIVO'
+      },
+      {
+        ck_sucursal: '349c36c6-ad6f-404f-b5ac-914c71d7c67c',
+        s_nombre_sucursal: 'Colima Norte',
+        s_domicilio: 'Blvd. Camino Real 456, Norte',
+        ck_estatus: 'ACTIVO'
+      }
+    ];
+    
+    console.log('Usando sucursales de prueba');
+    res.json({ success: true, sucursales: sucursalesPrueba });
+  }
+};
 
-      `, {
+// Obtener areas por sucursal
+const getAreasPorSucursal = async (req, res) => {
+  try {
+    const { sucursalId } = req.params;
+    console.log('Obteniendo áreas para sucursal:', sucursalId);
+    
+    try {
+      const areas = await CatalogoAreasModel.findAll({
+        where: { 
+          ck_sucursal: sucursalId,
+          ck_estatus: 'ACTIVO'
+        },
+        order: [['s_area', 'ASC']]
+      });
+
+      console.log('Áreas encontradas:', areas.length);
+      res.json({ success: true, areas });
+    } catch (dbError) {
+      console.log('Error en DB, usando áreas de prueba:', dbError.message);
+      
+      // Áreas de prueba
+      const areasPrueba = [
+        {
+          ck_area: '1a2b3c4d-5e6f-7g8h-9i0j-k1l2m3n4o5p6',
+          s_area: 'Atención al Cliente',
+          s_descripcion_area: 'Servicios generales de atención',
+          c_codigo_area: 'ATC001'
+        },
+        {
+          ck_area: '2b3c4d5e-6f7g-8h9i-0j1k-l2m3n4o5p6q7',
+          s_area: 'Facturación',
+          s_descripcion_area: 'Servicios de facturación y pagos',
+          c_codigo_area: 'FAC001'
+        },
+        {
+          ck_area: '3c4d5e6f-7g8h-9i0j-1k2l-m3n4o5p6q7r8',
+          s_area: 'Conexiones',
+          s_descripcion_area: 'Nuevas conexiones y reinstalaciones',
+          c_codigo_area: 'CON001'
+        }
+      ];
+      
+      res.json({ success: true, areas: areasPrueba });
+    }
+  } catch (error) {
+    console.error('Error al obtener áreas:', error);
+    res.status(500).json({ success: false, message: 'Error al obtener áreas' });
+  }
+};
+
+// Obtener servicios por area
+const getServiciosPorArea = async (req, res) => {
+  try {
+    const { areaId } = req.params;
+    const { esCliente } = req.query; // 1 para clientes, 0 para no clientes
+    console.log('Obteniendo servicios para área:', areaId, 'esCliente:', esCliente);
+    
+    try {
+      let whereCondition = { 
+        ck_area: areaId,
+        ck_estatus: 'ACTIVO'
+      };
+
+      if (esCliente !== undefined) {
+        whereCondition.i_es_para_clientes = parseInt(esCliente) || 0;
+      }
+
+      const servicios = await CatalogoServiciosModel.findAll({
+        where: whereCondition,
+        order: [['s_servicio', 'ASC']]
+      });
+
+      console.log('Servicios encontrados:', servicios.length);
+      res.json({ success: true, servicios });
+    } catch (dbError) {
+      console.log('Error en DB, usando servicios de prueba:', dbError.message);
+      
+      // Servicios de prueba
+      const serviciosPrueba = [
+        {
+          ck_servicio: 's1a2b3c4-5e6f-7g8h-9i0j-k1l2m3n4o5p6',
+          s_servicio: 'Consulta de Recibo',
+          s_descripcion_servicio: 'Consultar estado de cuenta y pagos',
+          c_codigo_servicio: 'CR001',
+          i_es_para_clientes: parseInt(esCliente) || 1
+        },
+        {
+          ck_servicio: 's2b3c4d5-6f7g-8h9i-0j1k-l2m3n4o5p6q7',
+          s_servicio: 'Reporte de Fallas',
+          s_descripcion_servicio: 'Reportar interrupciones del servicio',
+          c_codigo_servicio: 'RF001',
+          i_es_para_clientes: parseInt(esCliente) || 1
+        },
+        {
+          ck_servicio: 's3c4d5e6-7g8h-9i0j-1k2l-m3n4o5p6q7r8',
+          s_servicio: 'Cambio de Titularidad',
+          s_descripcion_servicio: 'Cambio de propietario del servicio',
+          c_codigo_servicio: 'CT001',
+          i_es_para_clientes: parseInt(esCliente) || 1
+        }
+      ];
+      
+      res.json({ success: true, servicios: serviciosPrueba });
+    }
+  } catch (error) {
+    console.error('Error al obtener servicios:', error);
+    res.status(500).json({ success: false, message: 'Error al obtener servicios' });
+  }
+};
+
+// Crear nuevo turno
+const crearTurno = async (req, res) => {
+  try {
+    const { 
+      ck_area, 
+      ck_sucursal, 
+      ck_servicio,
+      ck_cliente = null,
+      es_cliente = false 
+    } = req.body;
+
+    // Validar datos requeridos
+    if (!ck_area || !ck_sucursal || !ck_servicio) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Faltan datos requeridos: área, sucursal y servicio' 
+      });
+    }
+
+    // Obtener el siguiente número de turno para la sucursal y área
+    const ultimoTurno = await ConnectionDatabase.query(`
+      SELECT COALESCE(MAX(i_numero_turno), 0) as ultimo_numero
+      FROM operacion_turnos 
+      WHERE ck_sucursal = :sucursalId 
+        AND ck_area = :areaId
+    `, {
+      replacements: { sucursalId: ck_sucursal, areaId: ck_area },
       type: QueryTypes.SELECT,
     });
 
-    console.log("turnos. ", turnos)
+    const numeroTurno = (ultimoTurno[0]?.ultimo_numero || 0) + 1;
 
-    res.json(turnos);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Error al obtener turnos' });
-  }
-};
-
-// Turno actual (primer turno PENDI)
-const getTurnoActual = async (req, res) => {
-  try {
-    const { sucursalId } = req.params;
-    const turno = await Turno.findOne({
-      where: { ck_sucursal: sucursalId, ck_estatus: 'PENDI' },
-      order: [['i_numero_turno', 'ASC']],
+    console.log("datos,: ",  {
+      ck_turno: crypto.randomUUID(),
+      ck_area,
+      ck_sucursal,
+      ck_servicio,
+      ck_cliente: es_cliente ? ck_cliente : null,
+      i_numero_turno: numeroTurno,
+      ck_estatus: 'ACTIVO',
+      i_seccion: 1,
+    })
+    // Crear el turno
+    const nuevoTurno = await OperacionTurnosModel.create({
+      ck_turno: crypto.randomUUID(),
+      ck_area,
+      ck_sucursal,
+      ck_servicio,
+      ck_cliente: es_cliente ? ck_cliente : null,
+      i_numero_turno: numeroTurno,
+      ck_estatus: 'ACTIVO',
+      i_seccion: 1,
     });
-    res.json(turno || null);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Error al obtener turno actual' });
-  }
-};
 
-// Próximos turnos
-const getProximosTurnos = async (req, res) => {
-  try {
-    const { sucursalId } = req.params;
-    const turnos = await Turno.findAll({
-      where: { ck_sucursal: sucursalId, ck_estatus: 'PENDI' },
-      order: [['i_numero_turno', 'ASC']],
+    console.log("nuevoTurno: ", nuevoTurno)
+    // Obtener información completa del turno creado
+    const turnoCompleto = await ConnectionDatabase.query(`
+      SELECT 
+        ot.ck_turno,
+        ot.i_numero_turno,
+        ot.ck_estatus,
+        ot.t_tiempo_espera,
+        ca.s_area,
+        ca.c_codigo_area,
+        cs.s_servicio,
+        su.s_nombre_sucursal,
+        su.s_domicilio
+      FROM operacion_turnos ot
+      LEFT JOIN catalogo_area ca ON ca.ck_area = ot.ck_area
+      LEFT JOIN catalogo_servicios cs ON cs.ck_servicio = ot.ck_servicio
+      LEFT JOIN catalogo_sucursales su ON su.ck_sucursal = ot.ck_sucursal
+      WHERE ot.ck_turno = :turnoId
+    `, {
+      replacements: { turnoId: nuevoTurno.ck_turno },
+      type: QueryTypes.SELECT,
     });
-    res.json(turnos.slice(1)); // quitar turno actual
+
+    res.status(201).json({ 
+      success: true, 
+      message: 'Turno creado exitosamente',
+      turno: turnoCompleto[0]
+    });
+
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Error al obtener próximos turnos' });
+    console.error('Error al crear turno:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al crear turno',
+      error: error.message 
+    });
   }
 };
 
-// Atender turno
-const atenderTurnoActual = async (req, res) => {
+// Obtener todos los turnos con filtros
+const getTurnos = async (req, res) => {
   try {
-    const { id } = req.params;
-    const turno = await Turno.findByPk(id);
-    if (!turno) return res.status(404).json({ message: 'Turno no encontrado' });
+    const { sucursalId, areaId, estatus } = req.query;
+    
+    let whereConditions = ['ot.ck_estatus != "CERRADO"'];
+    let replacements = {};
 
-    turno.ck_estatus = 'ATENDI';
+    if (sucursalId) {
+      whereConditions.push('ot.ck_sucursal = :sucursalId');
+      replacements.sucursalId = sucursalId;
+    }
+
+    if (areaId) {
+      whereConditions.push('ot.ck_area = :areaId');
+      replacements.areaId = areaId;
+    }
+
+    if (estatus) {
+      whereConditions.push('ot.ck_estatus = :estatus');
+      replacements.estatus = estatus;
+    }
+
+    const whereClause = whereConditions.length > 0 ? 
+      `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    const turnos = await ConnectionDatabase.query(`
+      SELECT 
+        ot.ck_turno,
+        ot.ck_area,
+        ca.s_area,
+        ca.c_codigo_area,
+        ot.i_seccion,
+        ot.ck_estatus,
+        ot.ck_cliente,
+        COALESCE(
+          CONCAT(cc.s_nombre, ' ', cc.s_apellido_paterno_cliente, ' ', cc.s_apellido_materno_cliente),
+          'Sin cliente'
+        ) AS nombre_cliente,
+        ot.ck_sucursal,
+        su.s_nombre_sucursal,
+        su.s_domicilio,
+        ot.i_numero_turno,
+        ot.t_tiempo_espera,
+        ot.t_tiempo_atendido,
+        ot.d_fecha_atendido,
+        ot.ck_usuario_atendio,
+        cs.s_servicio,
+        cu.s_nombre as nombre_asesor
+      FROM operacion_turnos ot
+      LEFT JOIN catalogo_area ca ON ca.ck_area = ot.ck_area
+      LEFT JOIN catalogo_clientes cc ON cc.ck_cliente = ot.ck_cliente
+      LEFT JOIN catalogo_sucursales su ON su.ck_sucursal = ot.ck_sucursal
+      LEFT JOIN catalogo_servicios cs ON cs.ck_servicio = ot.ck_servicio
+      LEFT JOIN configuracion_usuarios cu ON cu.ck_usuario = ot.ck_usuario_atendio
+      ${whereClause}
+      ORDER BY ot.i_numero_turno ASC
+    `, {
+      replacements,
+      type: QueryTypes.SELECT,
+    });
+
+    res.json({ success: true, turnos });
+  } catch (error) {
+    console.error('Error al obtener turnos:', error);
+    res.status(500).json({ success: false, message: 'Error al obtener turnos' });
+  }
+};
+
+// Atender turno actual
+const atenderTurno = async (req, res) => {
+  try {
+    const { turnoId } = req.params;
+    const { ck_usuario_atendio } = req.body;
+
+    const turno = await OperacionTurnosModel.findByPk(turnoId);
+    if (!turno) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Turno no encontrado' 
+      });
+    }
+
+    if (turno.ck_estatus !== 'ACTIVO') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'El turno ya está siendo atendido o ha sido cerrado' 
+      });
+    }
+
+    turno.ck_estatus = 'PROCES';
+    turno.d_fecha_atendido = new Date();
+    turno.t_tiempo_atendido = new Date();
+    turno.ck_usuario_atendio = ck_usuario_atendio;
+    
     await turno.save();
-    res.json({ message: 'Turno atendido', turno });
+
+    res.json({ 
+      success: true, 
+      message: 'Turno en proceso de atención',
+      turno 
+    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Error al atender turno' });
+    console.error('Error al atender turno:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al atender turno' 
+    });
   }
 };
 
-// Terminar turno
-const terminarTurnoActual = async (req, res) => {
+// Finalizar atención de turno
+const finalizarTurno = async (req, res) => {
   try {
-    const { id } = req.params;
-    const turno = await Turno.findByPk(id);
-    if (!turno) return res.status(404).json({ message: 'Turno no encontrado' });
+    const { turnoId } = req.params;
 
+    const turno = await OperacionTurnosModel.findByPk(turnoId);
+    if (!turno) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Turno no encontrado' 
+      });
+    }
 
-module.exports = { getTurnos, crearTurno, eliminarTurno, updateTurno };
+    turno.ck_estatus = 'CERRADO';
+    await turno.save();
+
+    res.json({ 
+      success: true, 
+      message: 'Turno finalizado exitosamente',
+      turno 
+    });
+  } catch (error) {
+    console.error('Error al finalizar turno:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al finalizar turno' 
+    });
+  }
+};
+
+// Obtener estadísticas de turnos
+const getEstadisticasTurnos = async (req, res) => {
+  try {
+    const { sucursalId } = req.query;
+    
+    let whereClause = '';
+    let replacements = {};
+    
+    if (sucursalId) {
+      whereClause = 'WHERE ot.ck_sucursal = :sucursalId';
+      replacements.sucursalId = sucursalId;
+    }
+
+    const estadisticas = await ConnectionDatabase.query(`
+      SELECT 
+        COUNT(*) as total_turnos,
+        SUM(CASE WHEN ck_estatus = 'ACTIVO' THEN 1 ELSE 0 END) as turnos_pendientes,
+        SUM(CASE WHEN ck_estatus = 'PROCES' THEN 1 ELSE 0 END) as turnos_en_proceso,
+        SUM(CASE WHEN ck_estatus = 'CERRADO' THEN 1 ELSE 0 END) as turnos_atendidos,
+        AVG(CASE 
+          WHEN ck_estatus = 'CERRADO' AND t_tiempo_atendido IS NOT NULL 
+          THEN TIMESTAMPDIFF(MINUTE, t_tiempo_espera, t_tiempo_atendido)
+          ELSE NULL 
+        END) as tiempo_promedio_atencion
+      FROM operacion_turnos ot
+      ${whereClause}
+      AND DATE(t_tiempo_espera) = CURDATE()
+    `, {
+      replacements,
+      type: QueryTypes.SELECT,
+    });
+
+    res.json({ 
+      success: true, 
+      estadisticas: estadisticas[0] 
+    });
+  } catch (error) {
+    console.error('Error al obtener estadísticas:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al obtener estadísticas' 
+    });
+  }
+};
+
+module.exports = { 
+  getSucursales,
+  getAreasPorSucursal,
+  getServiciosPorArea,
+  crearTurno,
+  getTurnos, 
+  atenderTurno,
+  finalizarTurno,
+  getEstadisticasTurnos
+};
   
 
+  

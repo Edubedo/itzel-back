@@ -5,27 +5,34 @@ const routerGlobal = require('./routes/routes.js'); // Correct path to the route
 const { ConnectionDatabaseAuthenticated } = require('./config/connectDatabase.js');
 const cookieParser = require('cookie-parser');
 
-
-
-// Importar modelos para establecer asociacione
-require('./src/models/index.js'); // modelo de prodyctis
+// Importar modelos para establecer asociaciones
+require('./src/models/index.js');
 
 config();
 const app = express();
 
-app.use(express.json());
-
+// Configuración de CORS CORRECTA para desarrollo
+app.use(cors({
+    origin: function (origin, callback) {
+        // Permitir requests desde el frontend y sin origin (Postman, etc.)
+        if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+            callback(null, true);
+        } else {
+            callback(null, true); // En desarrollo permitir todo
+        }
+    },
+    credentials: true, // IMPORTANTE: Permitir cookies y credenciales
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+}));
 
 app.use(cookieParser());
 
-// Configuración CORS mejoradas
-const corsOptions = {
-    credentials: true,
-    origin: process.env.ORIGIN || 'http://localhost:5173', // Usar valor de .env o por defecto localhost:4000
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-};
-app.use(cors());
+// Middleware para logging de requests
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`);
+  next();
+});
 
 app.use(express.json()); // Poder obtener JSON de las peticiones
 app.use(express.text()); // Poder obtener texto de las peticiones
@@ -48,8 +55,10 @@ app.use((err, req, res, next) => {
 process.on('unhandledRejection', (reason, promise) => {
 });
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3001;
 app.listen(port, () => {
+    console.log(`🚀 Servidor ejecutándose en puerto ${port}`);
+    console.log(`📡 CORS configurado correctamente para desarrollo`);
 });
 
 // Verificar conexión a la base de datos

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 const express = require("express");
 const router = express.Router();
 const { 
@@ -24,16 +23,3 @@ router.put("/:id", upload.single('s_foto'), updateUsuario);
 router.delete("/:id", deleteUsuario);
 
 module.exports = router; 
-=======
-    // Router para clientes
-    // Router para clientes
-const express = require("express");
-const router = express.Router();
-const { getUsuarios } = require("./usuarios.controller");
-
-router.get("/getUsuarios", getUsuarios);
-
-const routerAuth = router; // Asignamos el router a la constante routerAuth
-
-module.exports = routerAuth; // Exportamos como routerAuth
->>>>>>> 9a1d9348dc1e30f31e01f64cc56a6e8501da84b1

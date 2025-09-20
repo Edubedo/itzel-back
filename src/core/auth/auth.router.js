@@ -9,6 +9,4 @@ router.post("/logout", logoutUsuario);
 router.post("/protected", authMiddleware, protectedInUsuario);
 router.post("/refresh-token", refreshToken);
 
-const routerAuth = router; // Asignamos el router a la constante routerAuth
-
-module.exports = routerAuth; // Exportamos como routerAuth
+module.exports = router;
