@@ -17,4 +17,8 @@ router.use("/catalogos/usuarios", require("../src/catalogos/usuarios/usuarios.ro
 
 router.use("/operaciones/turnos", require("../src/operaciones/turnos/turnos.routes")); // rutas de autenticacion
 
+//ROUTER PARA SUCURSALES
+
+router.use("/sucursales", require("../src/catalogos/sucursales/sucursales.router"));
+
 module.exports = router;

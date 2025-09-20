@@ -36,6 +36,7 @@ app.use('/usuarios', express.static('storage/usuarios')); // Servir imágenes de
 // Rutas
 app.use('/api', routerGlobal); // Llamas a las rutas
 
+
 // Middleware de manejo de errores
 app.use((err, req, res, next) => {
     if (!res.headersSent) {
