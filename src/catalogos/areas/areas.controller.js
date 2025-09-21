@@ -4,7 +4,6 @@ const { Op } = require("sequelize");
 // Obtener todas las áreas con filtros y paginación
 const getAllAreas = async (req, res) => {
     try {
-        console.log('Query parameters:', req.query);
         const { 
             page = 1, 
             limit = 10, 
@@ -14,7 +13,6 @@ const getAllAreas = async (req, res) => {
         } = req.query;
 
         const offset = (page - 1) * parseInt(limit);
-        console.log('Offset:', offset, 'Limit:', limit);
 
         // Construir condiciones de búsqueda
         let whereCondition = {};
@@ -35,8 +33,6 @@ const getAllAreas = async (req, res) => {
             whereCondition.ck_sucursal = ck_sucursal;
         }
 
-        console.log('Where condition:', JSON.stringify(whereCondition, null, 2));
-
         const { count, rows } = await CatalogoAreasModel.findAndCountAll({
             where: whereCondition,
             attributes: [
@@ -51,8 +47,6 @@ const getAllAreas = async (req, res) => {
             offset: offset,
             order: [['s_area', 'ASC']]
         });
-
-        console.log('Resultados encontrados:', count);
 
         // Mapear sucursales para mostrar nombres
         const areasWithSucursalNames = rows.map(area => {
@@ -81,7 +75,6 @@ const getAllAreas = async (req, res) => {
             }
         };
 
-        console.log('Enviando respuesta:', JSON.stringify(response, null, 2));
         res.status(200).json(response);
 
     } catch (error) {
@@ -160,6 +153,23 @@ const createArea = async (req, res) => {
             });
         }
 
+        // Validar longitud del código
+        if (c_codigo_area.length > 6) {
+            return res.status(400).json({
+                success: false,
+                message: 'El código no puede tener más de 6 caracteres'
+            });
+        }
+
+        // Validar que la sucursal exista
+        const sucursalesValidas = ['suc-001', 'suc-002'];
+        if (!sucursalesValidas.includes(ck_sucursal)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Sucursal no válida'
+            });
+        }
+
         // Verificar si el código de área ya existe
         const existingArea = await CatalogoAreasModel.findOne({
             where: { c_codigo_area }
@@ -172,12 +182,14 @@ const createArea = async (req, res) => {
             });
         }
 
-        // Generar UUID para ck_area
-        const { v4: uuidv4 } = require('uuid');
-        
+        // Generar ID único basado en timestamp (similar al patrón de usuarios)
+        const timestamp = Date.now();
+        const randomSuffix = Math.floor(Math.random() * 1000);
+        const ck_area = `area-${timestamp}-${randomSuffix}`;
+
         const newArea = await CatalogoAreasModel.create({
-            ck_area: uuidv4(),
-            c_codigo_area,
+            ck_area,
+            c_codigo_area: c_codigo_area.toUpperCase(),
             s_area,
             s_descripcion_area,
             ck_sucursal,
