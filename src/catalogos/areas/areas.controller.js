@@ -165,15 +165,6 @@ const createArea = async (req, res) => {
             });
         }
 
-        // Validar que la sucursal exista
-        const sucursalesValidas = ['suc-001', 'suc-002'];
-        if (!sucursalesValidas.includes(ck_sucursal)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Sucursal no válida'
-            });
-        }
-
         // Verificar si el código de área ya existe
         const existingArea = await CatalogoAreasModel.findOne({
             where: { c_codigo_area }
