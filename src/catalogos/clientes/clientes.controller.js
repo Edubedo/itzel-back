@@ -19,12 +19,12 @@ const getAllClientes = async (req, res) => {
 
         if (search) {
             whereCondition[Op.or] = [
-                { c_codigo_cliente: { [Op.like]: `%${search}%` } },
-                { s_nombre: { [Op.like]: `%${search}%` } },
-                { s_apellido_paterno_cliente: { [Op.like]: `%${search}%` } },
-                { s_apellido_materno_cliente: { [Op.like]: `%${search}%` } },
-                { s_domicilio: { [Op.like]: `%${search}%` } },
-                { s_tipo_contrato: { [Op.like]: `%${search}%` } }
+                { c_codigo_cliente: { [Op.iLike]: `%${search}%` } },
+                { s_nombre: { [Op.iLike]: `%${search}%` } },
+                { s_apellido_paterno_cliente: { [Op.iLike]: `%${search}%` } },
+                { s_apellido_materno_cliente: { [Op.iLike]: `%${search}%` } },
+                { s_domicilio: { [Op.iLike]: `%${search}%` } },
+                { s_tipo_contrato: { [Op.iLike]: `%${search}%` } }
             ];
         }
 

@@ -23,9 +23,9 @@ const getAllAreas = async (req, res) => {
 
         if (search) {
             whereCondition[Op.or] = [
-                { s_area: { [Op.like]: `%${search}%` } },
-                { c_codigo_area: { [Op.like]: `%${search}%` } },
-                { s_descripcion_area: { [Op.like]: `%${search}%` } }
+                { s_area: { [Op.iLike]: `%${search}%` } },
+                { c_codigo_area: { [Op.iLike]: `%${search}%` } },
+                { s_descripcion_area: { [Op.iLike]: `%${search}%` } }
             ];
         }
 
