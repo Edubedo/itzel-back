@@ -1,9 +1,7 @@
 const { ConnectionDatabase } = require("../../config/connectDatabase");
 const { DataTypes } = require("sequelize");
 
-
 const CatalogoAreasModel = ConnectionDatabase.define('CatalogoAreasModel', {
-    
     ck_area: {
         type: DataTypes.CHAR(36),
         allowNull: false,
@@ -33,7 +31,12 @@ const CatalogoAreasModel = ConnectionDatabase.define('CatalogoAreasModel', {
     }
 }, {
     tableName: 'catalogo_area', 
-    timestamps: false, // Deshabilitar timestamps automáticos
+    timestamps: false,
 });
+
+// Sincronizar el modelo (solo para desarrollo)
+CatalogoAreasModel.sync({ force: false })
+  .then(() => console.log('Tabla de áreas sincronizada'))
+  .catch(err => console.error('Error sincronizando tabla:', err));
 
 module.exports = CatalogoAreasModel;

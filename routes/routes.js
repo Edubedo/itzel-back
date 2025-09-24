@@ -29,4 +29,7 @@ router.use("/operaciones/turnos", require("../src/operaciones/turnos/turnos.rout
 //ROUTER PARA SUCURSALES
 router.use("/sucursales", require("../src/catalogos/sucursales/sucursales.router"));
 
+// RUTA PARA CLIENTES
+router.use("/catalogos/clientes", require("../src/catalogos/clientes/clientes.router"));
+
 module.exports = router;

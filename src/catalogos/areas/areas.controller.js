@@ -1,29 +1,31 @@
 const CatalogoAreasModel = require('../../models/areas.model');
 const { Op } = require("sequelize");
+const { Sucursal } = require('../../models/sucursales.model');
+CatalogoAreasModel.belongsTo(Sucursal, { foreignKey: 'ck_sucursal' });
+
 
 // Obtener todas las áreas con filtros y paginación
 const getAllAreas = async (req, res) => {
     try {
-        console.log('Query parameters:', req.query);
-        const { 
-            page = 1, 
-            limit = 10, 
-            search = '', 
-            ck_estatus = '', 
-            ck_sucursal = '' 
+
+        const {
+            page = 1,
+            limit = 10,
+            search = '',
+            ck_estatus = '',
+            ck_sucursal = ''
         } = req.query;
 
         const offset = (page - 1) * parseInt(limit);
-        console.log('Offset:', offset, 'Limit:', limit);
 
         // Construir condiciones de búsqueda
         let whereCondition = {};
 
         if (search) {
             whereCondition[Op.or] = [
-                { s_area: { [Op.like]: `%${search}%` } },
-                { c_codigo_area: { [Op.like]: `%${search}%` } },
-                { s_descripcion_area: { [Op.like]: `%${search}%` } }
+                { s_area: { [Op.iLike]: `%${search}%` } },
+                { c_codigo_area: { [Op.iLike]: `%${search}%` } },
+                { s_descripcion_area: { [Op.iLike]: `%${search}%` } }
             ];
         }
 
@@ -35,8 +37,6 @@ const getAllAreas = async (req, res) => {
             whereCondition.ck_sucursal = ck_sucursal;
         }
 
-        console.log('Where condition:', JSON.stringify(whereCondition, null, 2));
-
         const { count, rows } = await CatalogoAreasModel.findAndCountAll({
             where: whereCondition,
             attributes: [
@@ -47,26 +47,24 @@ const getAllAreas = async (req, res) => {
                 'ck_estatus',
                 'ck_sucursal'
             ],
+            include: [{
+                model: Sucursal,
+                attributes: ['s_nombre_sucursal']
+            }],
             limit: parseInt(limit),
             offset: offset,
             order: [['s_area', 'ASC']]
         });
 
-        console.log('Resultados encontrados:', count);
-
         // Mapear sucursales para mostrar nombres
         const areasWithSucursalNames = rows.map(area => {
             const areaData = area.toJSON();
-            const sucursalNames = {
-                'suc-001': 'Secured Control',
-                'suc-002': 'Secured Norte',
-            };
-            areaData.sucursal_nombre = sucursalNames[area.ck_sucursal] || area.ck_sucursal;
+            areaData.sucursal_nombre = areaData.Sucursal ? areaData.Sucursal.s_nombre_sucursal : areaData.ck_sucursal;
             return areaData;
         });
 
         const totalPages = Math.ceil(count / parseInt(limit));
-        
+
         const response = {
             success: true,
             data: {
@@ -81,7 +79,6 @@ const getAllAreas = async (req, res) => {
             }
         };
 
-        console.log('Enviando respuesta:', JSON.stringify(response, null, 2));
         res.status(200).json(response);
 
     } catch (error) {
@@ -160,6 +157,14 @@ const createArea = async (req, res) => {
             });
         }
 
+        // Validar longitud del código
+        if (c_codigo_area.length > 6) {
+            return res.status(400).json({
+                success: false,
+                message: 'El código no puede tener más de 6 caracteres'
+            });
+        }
+
         // Verificar si el código de área ya existe
         const existingArea = await CatalogoAreasModel.findOne({
             where: { c_codigo_area }
@@ -172,12 +177,14 @@ const createArea = async (req, res) => {
             });
         }
 
-        // Generar UUID para ck_area
-        const { v4: uuidv4 } = require('uuid');
-        
+        // Generar ID único basado en timestamp (similar al patrón de usuarios)
+        const timestamp = Date.now();
+        const randomSuffix = Math.floor(Math.random() * 1000);
+        const ck_area = `area-${timestamp}-${randomSuffix}`;
+
         const newArea = await CatalogoAreasModel.create({
-            ck_area: uuidv4(),
-            c_codigo_area,
+            ck_area,
+            c_codigo_area: c_codigo_area.toUpperCase(),
             s_area,
             s_descripcion_area,
             ck_sucursal,
@@ -230,7 +237,7 @@ const updateArea = async (req, res) => {
         // Verificar si el nuevo código ya existe (solo si se está cambiando)
         if (c_codigo_area && c_codigo_area !== area.c_codigo_area) {
             const existingArea = await CatalogoAreasModel.findOne({
-                where: { 
+                where: {
                     c_codigo_area,
                     ck_area: { [Op.ne]: id }
                 }
@@ -330,15 +337,17 @@ const getAreasStats = async (req, res) => {
             raw: true
         });
 
+        // Obtener nombres reales de sucursales
+        const sucursales = await Sucursal.findAll({
+            attributes: ['ck_sucursal', 's_nombre_sucursal'],
+            raw: true
+        });
+
         // Formatear estadísticas por sucursal
         const porSucursal = {};
-        const sucursalNames = {
-            'suc-001': 'Secured Control',
-            'suc-002': 'Secured Norte',
-        };
-
         areasPorSucursal.forEach(item => {
-            const nombreSucursal = sucursalNames[item.ck_sucursal] || item.ck_sucursal;
+            const sucursal = sucursales.find(s => s.ck_sucursal === item.ck_sucursal);
+            const nombreSucursal = sucursal ? sucursal.s_nombre_sucursal : item.ck_sucursal;
             porSucursal[nombreSucursal] = parseInt(item.count);
         });
 
@@ -362,20 +371,19 @@ const getAreasStats = async (req, res) => {
     }
 };
 
-// Obtener sucursales disponibles
+
+
 const getSucursales = async (req, res) => {
     try {
-        // Sucursales hardcodeadas - idealmente de una tabla
-        const sucursales = [
-            { ck_sucursal: 'suc-001', s_nombre: 'Secured Control' },
-            { ck_sucursal: 'suc-002', s_nombre: 'Secured Norte' }
-        ];
-
+        const sucursales = await Sucursal.findAll({
+            where: { ck_estatus: 'ACTIVO' },
+            attributes: ['ck_sucursal', 's_nombre_sucursal'],
+            order: [['s_nombre_sucursal', 'ASC']]
+        });
         res.status(200).json({
             success: true,
             data: sucursales
         });
-
     } catch (error) {
         console.error('Error al obtener sucursales:', error);
         res.status(500).json({
