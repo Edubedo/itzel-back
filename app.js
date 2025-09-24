@@ -62,6 +62,11 @@ app.listen(port, () => {
     console.log(`📡 CORS configurado correctamente para desarrollo`);
 });
 
+const serviciosRouter = require("./src/catalogos/servicios/servicios.router");
+app.use("/servicios", serviciosRouter);
+
+
+
 // Verificar conexión a la base de datos
 ConnectionDatabaseAuthenticated();
 
