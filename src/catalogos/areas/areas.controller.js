@@ -215,13 +215,18 @@ const createArea = async (req, res) => {
 const updateArea = async (req, res) => {
     try {
         const { id } = req.params;
-        const {
+        let {
             c_codigo_area,
             s_area,
             s_descripcion_area,
             ck_sucursal,
             ck_estatus
         } = req.body;
+
+        // Trim y validaciones
+        if (c_codigo_area && typeof c_codigo_area === 'string') {
+            c_codigo_area = c_codigo_area.trim().toUpperCase();
+        }
 
         const area = await CatalogoAreasModel.findOne({
             where: { ck_area: id }
@@ -231,6 +236,14 @@ const updateArea = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'Área no encontrada'
+            });
+        }
+
+        // Validar longitud del código
+        if (c_codigo_area && c_codigo_area.length > 6) {
+            return res.status(400).json({
+                success: false,
+                message: 'El código no puede tener más de 6 caracteres'
             });
         }
 
@@ -296,7 +309,7 @@ const deleteArea = async (req, res) => {
 
         // Soft delete - cambiar estatus a INACTI
         await CatalogoAreasModel.update(
-            { ck_estatus: 'INACTI' },
+            { ck_estatus: 'INACTIVO' },
             { where: { ck_area: id } }
         );
 
@@ -323,7 +336,7 @@ const getAreasStats = async (req, res) => {
             where: { ck_estatus: 'ACTIVO' }
         });
         const areasInactivas = await CatalogoAreasModel.count({
-            where: { ck_estatus: 'INACTI' }
+            where: { ck_estatus: 'INACTIVO' }
         });
 
         // Contar por sucursal
