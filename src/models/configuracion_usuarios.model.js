@@ -65,6 +65,15 @@ const ConfiguracionUsuariosModel = ConnectionDatabase.define('ConfiguracionUsuar
         type: DataTypes.CHAR(36),
         allowNull: false
     },
+     // Campos para recuperación de contraseña 
+    reset_code: {
+        type: DataTypes.STRING(10),
+        allowNull: true
+    },
+    reset_code_expires: {
+        type: DataTypes.DATE,
+        allowNull: true
+    }
 
 }, {
     tableName: 'configuracion_usuarios',
