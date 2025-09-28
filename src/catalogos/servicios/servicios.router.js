@@ -9,10 +9,7 @@ const {
   deleteServicio,
   getServiciosStats,
 } = require("./servicios.controller");
-const authMiddleware = require("../../../middlewares/authMiddleware");
 
-// 🔒 Middleware de autenticación para todas las rutas
-router.use(authMiddleware);
 
 // Rutas para servicios
 router.get("/", getServicios);                 // GET /api/servicios?page=1&limit=10...

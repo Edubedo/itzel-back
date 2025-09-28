@@ -7,6 +7,43 @@ const { ConnectionDatabase } = require("../../../config/connectDatabase");
 const crypto = require('crypto');
 const { generateTicketPDF } = require("../../utils/pdfGenerator");
 
+
+const getEstadisticasTurnosMensuales = async (req, res) => {
+  try {
+    const { sucursalId } = req.query;
+
+    let whereClause = "";
+    let replacements = {};
+
+    if (sucursalId) {
+      whereClause = "AND ot.ck_sucursal = :sucursalId";
+      replacements.sucursalId = sucursalId;
+    }
+
+    const estadisticasMensuales = await ConnectionDatabase.query(`
+      SELECT 
+        TO_CHAR(ot.d_fecha_creacion, 'Mon') as mes,
+        EXTRACT(MONTH FROM ot.d_fecha_creacion) as numero_mes,
+        COUNT(*) as total_turnos
+      FROM operacion_turnos ot
+      WHERE EXTRACT(YEAR FROM ot.d_fecha_creacion) = EXTRACT(YEAR FROM CURRENT_DATE)
+      ${whereClause}
+      GROUP BY mes, numero_mes
+      ORDER BY numero_mes;
+    `, {
+      replacements,
+      type: QueryTypes.SELECT,
+    });
+
+    res.json({ success: true, estadisticas: estadisticasMensuales });
+  } catch (error) {
+    console.error("Error al obtener estadísticas mensuales:", error);
+    res.status(500).json({ success: false, message: "Error al obtener estadísticas mensuales" });
+  }
+};
+
+
+
 // Obtener todas las sucursales
 const getSucursales = async (req, res) => {
   try {
@@ -505,6 +542,7 @@ const descargarTicketPDF = async (req, res) => {
 };
 
 module.exports = {
+  getEstadisticasTurnosMensuales,
   getSucursales,
   getAreasPorSucursal,
   getServiciosPorArea,

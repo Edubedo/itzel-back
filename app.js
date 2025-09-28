@@ -63,7 +63,7 @@ app.listen(port, () => {
 });
 
 const serviciosRouter = require("./src/catalogos/servicios/servicios.router");
-app.use("/servicios", serviciosRouter);
+app.use("/api/servicios", serviciosRouter);
 
 
 

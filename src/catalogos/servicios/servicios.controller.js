@@ -1,30 +1,20 @@
 const { CatalogoServiciosModel } = require("../../models");
 const { Op } = require("sequelize");
 
+
+
 /**
  * Obtener todos los servicios con paginación, filtros y búsqueda
  */
 const getServicios = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = "", estatus, area } = req.query;
+    const getServicios = await CatalogoServiciosModel.findAll({
+      where: {
+        "ck_estatus" : "ACTIVO"
+      }
+    })
 
-    const offset = (page - 1) * limit;
-    const where = {};
-
-    if (search) {
-      where.s_servicio = { [Op.like]: `%${search}%` };
-    }
-    if (estatus) where.ck_estatus = estatus;
-    if (area) where.ck_area = area;
-
-    const { rows, count } = await CatalogoServiciosModel.findAndCountAll({
-      where,
-      limit: parseInt(limit),
-      offset,
-      order: [["createdAt", "DESC"]],
-    });
-
-    return res.json({ items: rows, total: count, message: "getServicios ok" });
+    return res.json({ getServicios, message: "getServicios ok" });
   } catch (error) {
     console.error("Error en getServicios:", error);
     return res.status(500).json({ error: "Error al obtener los servicios" });
