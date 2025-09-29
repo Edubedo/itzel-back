@@ -21,7 +21,11 @@ const ConfiguracionSistemaModel = ConnectionDatabase.define('ConfiguracionSistem
         type: DataTypes.STRING(100),
         allowNull: true
     },
-    s_logo: {
+    s_logo_light: {
+        type: DataTypes.STRING(),
+        allowNull: true
+    },
+    s_logo_dark: {
         type: DataTypes.STRING(),
         allowNull: true
     },
