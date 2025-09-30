@@ -4,8 +4,8 @@ const router = express.Router();
 
 // Ruta de prueba para verificar que las rutas funcionen
 router.get('/test', (req, res) => {
-  res.json({ 
-    success: true, 
+  res.json({
+    success: true,
     message: 'Las rutas están funcionando correctamente',
     timestamp: new Date().toISOString()
   });
@@ -35,5 +35,7 @@ router.use("/catalogos/clientes", require("../src/catalogos/clientes/clientes.ro
 // RUTA PARA RECUPERAR CONTRASEÑA
 router.use("/auth", require("../src/core/auth/auth.router"));
 
+// RUTA PARA BÚSQUEDA GENERAL
+router.use("/", require("./busquedaGeneral"));
 
 module.exports = router;
