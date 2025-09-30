@@ -6,6 +6,7 @@ const Sucursal = ConnectionDatabase.define('Sucursal', {
     type: DataTypes.CHAR(36),
     primaryKey: true,
     allowNull: false,
+    defaultValue: DataTypes.UUIDV4,
   },
   ck_estatus: {
     type: DataTypes.CHAR(6),
@@ -35,6 +36,34 @@ const Sucursal = ConnectionDatabase.define('Sucursal', {
 }, {
   tableName: 'catalogo_sucursales',
   timestamps: false,
+});
+
+// Establecer asociaciones
+const CatalogoMunicipiosModel = require('./municipios.model');
+const CatalogoEstadosModel = require('./estados.model');
+
+// Sucursal pertenece a un municipio
+Sucursal.belongsTo(CatalogoMunicipiosModel, {
+  foreignKey: 'ck_municipio',
+  as: 'municipio'
+});
+
+// Municipio pertenece a un estado
+CatalogoMunicipiosModel.belongsTo(CatalogoEstadosModel, {
+  foreignKey: 'ck_estado',
+  as: 'estado'
+});
+
+// Estado tiene muchos municipios
+CatalogoEstadosModel.hasMany(CatalogoMunicipiosModel, {
+  foreignKey: 'ck_estado',
+  as: 'municipios'
+});
+
+// Municipio tiene muchas sucursales
+CatalogoMunicipiosModel.hasMany(Sucursal, {
+  foreignKey: 'ck_municipio',
+  as: 'sucursales'
 });
 
 module.exports = { Sucursal };

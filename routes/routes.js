@@ -27,7 +27,7 @@ router.use("/catalogos/usuarios", require("../src/catalogos/usuarios/usuarios.ro
 router.use("/operaciones/turnos", require("../src/operaciones/turnos/turnos.routes"));
 
 //ROUTER PARA SUCURSALES
-router.use("/sucursales", require("../src/catalogos/sucursales/sucursales.router"));
+router.use("/catalogos/sucursales", require("../src/catalogos/sucursales/sucursales.router"));
 
 // RUTA PARA CLIENTES
 router.use("/catalogos/clientes", require("../src/catalogos/clientes/clientes.router"));
