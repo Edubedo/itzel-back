@@ -9,16 +9,16 @@ const getAllSucursales = async (req, res) => {
       order: [['s_nombre_sucursal', 'ASC']]
     });
     console.log('Sucursales obtenidas:', sucursales);
-    
-    res.json({ 
-      success: true, 
-      sucursales 
+
+    res.json({
+      success: true,
+      sucursales
     });
   } catch (error) {
     console.error('Error al obtener sucursales:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error al obtener sucursales' 
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener sucursales'
     });
   }
 };
@@ -28,23 +28,29 @@ const getSucursalById = async (req, res) => {
   try {
     const { id } = req.params;
     const sucursal = await Sucursal.findByPk(id);
-    
+
     if (!sucursal) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Sucursal no encontrada' 
+      return res.status(404).json({
+        success: false,
+        message: 'Sucursal no encontrada'
       });
     }
-    
-    res.json({ 
-      success: true, 
-      sucursal 
+
+    // Limpiar espacios en blanco del campo ck_estatus
+    const sucursalData = sucursal.toJSON();
+    if (sucursalData.ck_estatus) {
+      sucursalData.ck_estatus = sucursalData.ck_estatus.trim();
+    }
+
+    res.json({
+      success: true,
+      sucursal: sucursalData
     });
   } catch (error) {
     console.error('Error al obtener sucursal:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error al obtener la sucursal' 
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener la sucursal'
     });
   }
 };
@@ -52,18 +58,18 @@ const getSucursalById = async (req, res) => {
 // Crear nueva sucursal
 const createSucursal = async (req, res) => {
   try {
-    const { 
-      s_nombre_sucursal, 
-      s_domicilio, 
+    const {
+      s_nombre_sucursal,
+      s_domicilio,
       ck_municipio,
       s_telefono,
-      s_codigo_postal 
+      s_codigo_postal
     } = req.body;
-    
+
     if (!s_nombre_sucursal) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'El nombre de la sucursal es requerido' 
+      return res.status(400).json({
+        success: false,
+        message: 'El nombre de la sucursal es requerido'
       });
     }
 
@@ -75,17 +81,17 @@ const createSucursal = async (req, res) => {
       s_codigo_postal,
       ck_estatus: 'ACTIVO'
     });
-    
-    res.status(201).json({ 
+
+    res.status(201).json({
       success: true,
       message: 'Sucursal creada exitosamente',
-      sucursal: nuevaSucursal 
+      sucursal: nuevaSucursal
     });
   } catch (error) {
     console.error('Error al crear sucursal:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error al crear la sucursal' 
+    res.status(500).json({
+      success: false,
+      message: 'Error al crear la sucursal'
     });
   }
 };
@@ -94,20 +100,20 @@ const createSucursal = async (req, res) => {
 const updateSucursal = async (req, res) => {
   try {
     const { id } = req.params;
-    const { 
-      s_nombre_sucursal, 
-      s_domicilio, 
+    const {
+      s_nombre_sucursal,
+      s_domicilio,
       ck_municipio,
       s_telefono,
-      s_codigo_postal 
+      s_codigo_postal
     } = req.body;
 
     const sucursal = await Sucursal.findByPk(id);
-    
+
     if (!sucursal) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Sucursal no encontrada' 
+      return res.status(404).json({
+        success: false,
+        message: 'Sucursal no encontrada'
       });
     }
 
@@ -119,16 +125,16 @@ const updateSucursal = async (req, res) => {
       s_codigo_postal
     });
 
-    res.json({ 
+    res.json({
       success: true,
       message: 'Sucursal actualizada exitosamente',
-      sucursal 
+      sucursal
     });
   } catch (error) {
     console.error('Error al actualizar sucursal:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error al actualizar la sucursal' 
+    res.status(500).json({
+      success: false,
+      message: 'Error al actualizar la sucursal'
     });
   }
 };
@@ -137,27 +143,27 @@ const updateSucursal = async (req, res) => {
 const deleteSucursal = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const sucursal = await Sucursal.findByPk(id);
-    
+
     if (!sucursal) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Sucursal no encontrada' 
+      return res.status(404).json({
+        success: false,
+        message: 'Sucursal no encontrada'
       });
     }
 
     await sucursal.update({ ck_estatus: 'INACTIVO' });
 
-    res.json({ 
+    res.json({
       success: true,
       message: 'Sucursal eliminada exitosamente'
     });
   } catch (error) {
     console.error('Error al eliminar sucursal:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error al eliminar la sucursal' 
+    res.status(500).json({
+      success: false,
+      message: 'Error al eliminar la sucursal'
     });
   }
 };

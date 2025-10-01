@@ -56,10 +56,14 @@ const getAllAreas = async (req, res) => {
             order: [['s_area', 'ASC']]
         });
 
-        // Mapear sucursales para mostrar nombres
+        // Mapear sucursales para mostrar nombres y limpiar espacios del estatus
         const areasWithSucursalNames = rows.map(area => {
             const areaData = area.toJSON();
             areaData.sucursal_nombre = areaData.Sucursal ? areaData.Sucursal.s_nombre_sucursal : areaData.ck_sucursal;
+            // Limpiar espacios en blanco del campo ck_estatus (por si es CHAR y tiene padding)
+            if (areaData.ck_estatus) {
+                areaData.ck_estatus = areaData.ck_estatus.trim();
+            }
             return areaData;
         });
 
@@ -115,13 +119,18 @@ const getAreaById = async (req, res) => {
             });
         }
 
-        // Agregar nombre de sucursal
+        // Agregar nombre de sucursal y limpiar espacios del estatus
         const areaData = area.toJSON();
         const sucursalNames = {
             'suc-001': 'Secured Control',
             'suc-002': 'Secured Norte',
         };
         areaData.sucursal_nombre = sucursalNames[area.ck_sucursal] || area.ck_sucursal;
+        
+        // Limpiar espacios en blanco del campo ck_estatus (por si es CHAR y tiene padding)
+        if (areaData.ck_estatus) {
+            areaData.ck_estatus = areaData.ck_estatus.trim();
+        }
 
         res.status(200).json({
             success: true,

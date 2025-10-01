@@ -93,10 +93,19 @@ const getAllUsuarios = async (req, res) => {
             order: [['s_nombre', 'ASC']]
         });
 
+        // Limpiar espacios en blanco del campo ck_estatus en todos los usuarios
+        const usuariosLimpios = rows.map(usuario => {
+            const usuarioData = usuario.toJSON();
+            if (usuarioData.ck_estatus) {
+                usuarioData.ck_estatus = usuarioData.ck_estatus.trim();
+            }
+            return usuarioData;
+        });
+
         res.status(200).json({
             success: true,
             data: {
-                usuarios: rows,
+                usuarios: usuariosLimpios,
                 pagination: {
                     total: count,
                     currentPage: parseInt(page),
@@ -148,9 +157,15 @@ const getUsuarioById = async (req, res) => {
             });
         }
 
+        // Limpiar espacios en blanco del campo ck_estatus
+        const usuarioData = usuario.toJSON();
+        if (usuarioData.ck_estatus) {
+            usuarioData.ck_estatus = usuarioData.ck_estatus.trim();
+        }
+
         res.status(200).json({
             success: true,
-            data: usuario
+            data: usuarioData
         });
 
     } catch (error) {
