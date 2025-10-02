@@ -33,7 +33,13 @@ const getServicioById = async (req, res) => {
       return res.status(404).json({ error: "Servicio no encontrado" });
     }
 
-    return res.json({ data: servicio });
+    // Limpiar espacios en blanco del campo ck_estatus
+    const servicioData = servicio.toJSON();
+    if (servicioData.ck_estatus) {
+      servicioData.ck_estatus = servicioData.ck_estatus.trim();
+    }
+
+    return res.json({ data: servicioData });
   } catch (error) {
     console.error("Error en getServicioById:", error);
     return res.status(500).json({ error: "Error al obtener el servicio" });

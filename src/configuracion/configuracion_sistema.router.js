@@ -1,8 +1,9 @@
+// routes/configuracionRoutes.js
 const express = require('express');
 const router = express.Router();
-const controller = require('./configuracion_sistema.controller');
+const { getConfiguracion, updateConfiguracion } = require('./configuracion_sistema.controller');
 
-router.get('/', controller.getConfiguracion);
-router.put('/', controller.updateConfiguracion);
+router.get('/configuracion', getConfiguracion);
+router.put('/configuracion', updateConfiguracion);
 
 module.exports = router;
