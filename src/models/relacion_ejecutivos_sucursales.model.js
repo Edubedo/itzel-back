@@ -21,6 +21,14 @@ const RelacionEjecutivosSucursalesModel = ConnectionDatabase.define('RelacionEje
         type: DataTypes.CHAR(36),
         allowNull: true
     },
+    ck_area: {
+        type: DataTypes.CHAR(36),
+        allowNull: true
+    },
+    ck_servicio: {
+        type: DataTypes.CHAR(36),
+        allowNull: true
+    }
 }, {
     tableName: 'relacion_ejecutivos_sucursales',
     timestamps: false,

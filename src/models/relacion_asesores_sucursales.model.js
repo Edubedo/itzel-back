@@ -14,7 +14,7 @@ const RelacionAsesoresSucursalesModel = ConnectionDatabase.define('RelacionAseso
         defaultValue: 'ACTIVO'
     },
     ck_usuario: {
-        type: DataTypes.CHAR(6),
+        type: DataTypes.CHAR(36),
         allowNull: false
     },
     ck_sucursal: {

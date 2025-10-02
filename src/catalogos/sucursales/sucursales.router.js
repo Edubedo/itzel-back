@@ -1,12 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const { 
+  getAllEstados,
+  getMunicipiosByEstado,
   getAllSucursales,
   getSucursalById,
   createSucursal,
   updateSucursal,
   deleteSucursal
 } = require('./sucursales.controller');
+
+// Obtener todos los estados
+router.get('/estados', getAllEstados);
+
+// Obtener municipios por estado
+router.get('/estados/:estadoId/municipios', getMunicipiosByEstado);
 
 // Obtener todas las sucursales
 router.get('/', getAllSucursales);
