@@ -504,6 +504,41 @@ const descargarTicketPDF = async (req, res) => {
   }
 };
 
+const notificaciones = async(req, res) => {
+  try { 
+      // console.log("api", req.query)
+        // Trae todos los turnos pendientes
+        const turnos = await OperacionTurnosModel.findAll({
+          where: { ck_estatus: "ACTIVO" },
+          order: [["d_fecha_creacion", "ASC"]],
+        });
+
+        // console.log("turnos: ", turnos)
+    
+        // turnos.forEach((t) => {
+          // Notificación de nuevo turno mapeo
+          const notificaciones = turnos.map(t => ({
+            id: t.ck_turno,
+            mensaje: `Nuevo turno: ${t.ck_turno}`,
+            area: t.ck_area,
+            servicio: t.ck_servicio,
+            sucursal: t.ck_sucursal,
+            fecha: t.d_fecha_creacion,
+            leida: false,
+          }));
+
+          res.json({ success: true, notificaciones});
+        } catch (error){
+          console.error("Error al obtener notificacione:", error);
+          res.status(500).json({siccess: false, message: "Error al obtener notificación"});
+        }
+    
+        // });
+    
+        res.json({ success: true, turnos });
+
+  
+}
 module.exports = {
   getSucursales,
   getAreasPorSucursal,
@@ -512,7 +547,9 @@ module.exports = {
   getTurnos,
   atenderTurno,
   finalizarTurno,
-  descargarTicketPDF
+  getEstadisticasTurnos,
+  descargarTicketPDF,
+  notificaciones
 };
   
 

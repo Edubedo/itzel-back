@@ -10,7 +10,9 @@ const {
   getTurnos, 
   atenderTurno,
   finalizarTurno,
-  descargarTicketPDF
+  getEstadisticasTurnos,
+  descargarTicketPDF,
+  notificaciones
 } = require("./turnos.controller");
 
 // Rutas para obtener catálogos
@@ -27,5 +29,9 @@ router.put('/finalizar/:turnoId', finalizarTurno);
 
 // Ruta para descargar ticket PDF
 router.get('/ticket/:turnoId/pdf', descargarTicketPDF);
+
+
+router.get('/notificaciones', notificaciones);
+
 
 module.exports = router;
