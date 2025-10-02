@@ -4,12 +4,12 @@ const { Op } = require('sequelize');
 // Obtener todos los clientes con filtros y paginación
 const getAllClientes = async (req, res) => {
     try {
-        const { 
-            page = 1, 
-            limit = 10, 
-            search = '', 
-            ck_estatus = '', 
-            s_tipo_contrato = '' 
+        const {
+            page = 1,
+            limit = 10,
+            search = '',
+            ck_estatus = '',
+            s_tipo_contrato = ''
         } = req.query;
 
         const offset = (page - 1) * limit;
@@ -135,7 +135,7 @@ const getClienteById = async (req, res) => {
             s_domicilio: cliente.s_domicilio,
             s_description_cliente: cliente.s_descripcion_cliente,
             l_cliente_premium: cliente.i_cliente_premium === 1,
-            ck_estatus: cliente.ck_estatus,
+            ck_estatus: cliente.ck_estatus ? cliente.ck_estatus.trim() : cliente.ck_estatus,
             c_codigo_contrato: cliente.c_codigo_contrato
         };
 
@@ -253,7 +253,7 @@ const updateCliente = async (req, res) => {
         // Verificar si el nuevo código de cliente ya existe (excluyendo el actual)
         if (c_codigo_cliente && c_codigo_cliente !== cliente.c_codigo_cliente) {
             const existingCliente = await CatalogoClientesModel.findOne({
-                where: { 
+                where: {
                     c_codigo_cliente,
                     ck_cliente: { [Op.ne]: id }
                 }
@@ -356,7 +356,7 @@ const getClientesStats = async (req, res) => {
                 's_tipo_contrato',
                 [CatalogoClientesModel.sequelize.fn('COUNT', CatalogoClientesModel.sequelize.col('ck_cliente')), 'count']
             ],
-            where: { 
+            where: {
                 s_tipo_contrato: { [Op.ne]: null },
                 ck_estatus: 'ACTIVO'
             },

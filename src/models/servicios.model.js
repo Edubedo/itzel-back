@@ -30,7 +30,7 @@ const CatalogoServiciosModel = ConnectionDatabase.define('CatalogoServiciosModel
         allowNull: true
     },
     i_es_para_clientes: {
-        type: DataTypes.INTEGER(16),
+        type: DataTypes.INTEGER,
         allowNull: true,
         defaultValue: 1
     },

@@ -30,13 +30,13 @@ app.use(cookieParser());
 
 // Middleware para logging de requests
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path}`);
-  next();
+    console.log(`${req.method} ${req.path}`);
+    next();
 });
 
-app.use(express.json()); // Poder obtener JSON de las peticiones
-app.use(express.text()); // Poder obtener texto de las peticiones
-app.use(express.urlencoded({ extended: true })); // Poder obtener datos de formularios
+app.use(express.json({ limit: '10mb' })); 
+app.use(express.text({ limit: '10mb' })); 
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static('storage')); // Para poder acceder a la carpeta storage directamente
 app.use('/usuarios', express.static('storage/usuarios')); // Servir imágenes de usuarios
 app.use('/public', express.static('public')); // Servir archivos públicos (logos, etc.)
@@ -63,7 +63,18 @@ app.listen(port, () => {
     console.log(`📡 CORS configurado correctamente para desarrollo`);
 });
 
+const serviciosRouter = require("./src/catalogos/servicios/servicios.router");
+app.use("/api/servicios", serviciosRouter);
+
+
+
 // Verificar conexión a la base de datos
 ConnectionDatabaseAuthenticated();
+
+// Middleware de debug para todas las rutas
+app.use('/api/configuracion_sistema', (req, res, next) => {
+    console.log(`${req.method} ${req.path}`, req.body);
+    next();
+});
 
 module.exports = { app };

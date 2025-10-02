@@ -3,6 +3,69 @@ const { Op } = require("sequelize");
 const { Sucursal } = require('../../models/sucursales.model');
 CatalogoAreasModel.belongsTo(Sucursal, { foreignKey: 'ck_sucursal' });
 
+const VisitasAreaModel = require("../../models/visitas.model");
+const { Sequelize } = require("sequelize");
+
+
+
+// Registrar visita
+const registrarVisita = async (req, res) => {
+  try {
+    const { ck_area } = req.body;
+
+    if (!ck_area) {
+      return res.status(400).json({ message: "Falta el campo ck_area" });
+    }
+
+    // Insertar en la tabla visitas_area
+    await ConnectionDatabase.query(
+      `INSERT INTO visitas_area (ck_area) VALUES (:ck_area)`,
+      {
+        replacements: { ck_area },
+        type: QueryTypes.INSERT,
+      }
+    );
+
+    res.json({ message: "Visita registrada correctamente" });
+  } catch (error) {
+    console.error("Error registrando visita:", error);
+    res.status(500).json({ message: "Error en el servidor" });
+  }
+};
+
+
+// Obtener las áreas más populares
+const getPopularAreas = async (req, res) => {
+  try {
+    const data = await VisitasAreaModel.findAll({
+      attributes: [
+        "ck_area",
+        [Sequelize.fn("COUNT", Sequelize.col("id")), "visitas"]
+      ],
+      include: [
+        {
+          model: CatalogoAreasModel,
+          attributes: ["s_area"]
+        }
+      ],
+      group: ["VisitasAreaModel.ck_area", "CatalogoAreasModel.ck_area"],
+      order: [[Sequelize.literal("visitas"), "DESC"]],
+      limit: 5
+    });
+
+    const result = data.map(item => ({
+      area: item.CatalogoAreasModel.s_area,
+      visitas: item.dataValues.visitas
+    }));
+
+    res.json(result);
+  } catch (error) {
+    console.error("Error obteniendo áreas populares:", error);
+    res.status(500).json({ message: "Error en el servidor" });
+  }
+};
+
+
 
 // Obtener todas las áreas con filtros y paginación
 const getAllAreas = async (req, res) => {
@@ -56,10 +119,14 @@ const getAllAreas = async (req, res) => {
             order: [['s_area', 'ASC']]
         });
 
-        // Mapear sucursales para mostrar nombres
+        // Mapear sucursales para mostrar nombres y limpiar espacios del estatus
         const areasWithSucursalNames = rows.map(area => {
             const areaData = area.toJSON();
             areaData.sucursal_nombre = areaData.Sucursal ? areaData.Sucursal.s_nombre_sucursal : areaData.ck_sucursal;
+            // Limpiar espacios en blanco del campo ck_estatus (por si es CHAR y tiene padding)
+            if (areaData.ck_estatus) {
+                areaData.ck_estatus = areaData.ck_estatus.trim();
+            }
             return areaData;
         });
 
@@ -115,13 +182,18 @@ const getAreaById = async (req, res) => {
             });
         }
 
-        // Agregar nombre de sucursal
+        // Agregar nombre de sucursal y limpiar espacios del estatus
         const areaData = area.toJSON();
         const sucursalNames = {
             'suc-001': 'Secured Control',
             'suc-002': 'Secured Norte',
         };
         areaData.sucursal_nombre = sucursalNames[area.ck_sucursal] || area.ck_sucursal;
+        
+        // Limpiar espacios en blanco del campo ck_estatus (por si es CHAR y tiene padding)
+        if (areaData.ck_estatus) {
+            areaData.ck_estatus = areaData.ck_estatus.trim();
+        }
 
         res.status(200).json({
             success: true,
@@ -414,5 +486,7 @@ module.exports = {
     updateArea,
     deleteArea,
     getAreasStats,
-    getSucursales
+    getSucursales,
+    registrarVisita,
+    getPopularAreas
 };
