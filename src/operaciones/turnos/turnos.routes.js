@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 
 const { 
+  getEstadisticasTurnosMensuales,
   getSucursales,
   getAreasPorSucursal,
   getServiciosPorArea,
@@ -14,6 +15,13 @@ const {
   descargarTicketPDF,
   notificaciones
 } = require("./turnos.controller");
+
+
+
+console.log("¿Función definida?", typeof getEstadisticasTurnosMensuales);
+router.get("/estadisticas-mensuales", getEstadisticasTurnosMensuales);
+
+
 
 // Rutas para obtener catálogos
 router.get('/sucursales', getSucursales);

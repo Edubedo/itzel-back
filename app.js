@@ -40,6 +40,7 @@ app.use(express.urlencoded({ extended: true })); // Poder obtener datos de formu
 app.use(express.static('storage')); // Para poder acceder a la carpeta storage directamente
 app.use('/usuarios', express.static('storage/usuarios')); // Servir imágenes de usuarios
 app.use('/public', express.static('public')); // Servir archivos públicos (logos, etc.)
+app.use('/api/configuracion_sistema', require('./src/configuracion/configuracion_sistema.router'));
 
 // Rutas
 app.use('/api', routerGlobal); // Llamas a las rutas
@@ -61,6 +62,11 @@ app.listen(port, () => {
     console.log(`🚀 Servidor ejecutándose en puerto ${port}`);
     console.log(`📡 CORS configurado correctamente para desarrollo`);
 });
+
+const serviciosRouter = require("./src/catalogos/servicios/servicios.router");
+app.use("/api/servicios", serviciosRouter);
+
+
 
 // Verificar conexión a la base de datos
 ConnectionDatabaseAuthenticated();

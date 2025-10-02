@@ -8,7 +8,7 @@ const CatalogoAreasModel = ConnectionDatabase.define('CatalogoAreasModel', {
         primaryKey: true
     },
     ck_estatus: {
-        type: DataTypes.CHAR(6),
+        type: DataTypes.CHAR(8),
         allowNull: false,
         defaultValue: 'ACTIVO'
     },
