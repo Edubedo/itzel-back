@@ -3,6 +3,69 @@ const { Op } = require("sequelize");
 const { Sucursal } = require('../../models/sucursales.model');
 CatalogoAreasModel.belongsTo(Sucursal, { foreignKey: 'ck_sucursal' });
 
+const VisitasAreaModel = require("../../models/visitas.model");
+const { Sequelize } = require("sequelize");
+
+
+
+// Registrar visita
+const registrarVisita = async (req, res) => {
+  try {
+    const { ck_area } = req.body;
+
+    if (!ck_area) {
+      return res.status(400).json({ message: "Falta el campo ck_area" });
+    }
+
+    // Insertar en la tabla visitas_area
+    await ConnectionDatabase.query(
+      `INSERT INTO visitas_area (ck_area) VALUES (:ck_area)`,
+      {
+        replacements: { ck_area },
+        type: QueryTypes.INSERT,
+      }
+    );
+
+    res.json({ message: "Visita registrada correctamente" });
+  } catch (error) {
+    console.error("Error registrando visita:", error);
+    res.status(500).json({ message: "Error en el servidor" });
+  }
+};
+
+
+// Obtener las áreas más populares
+const getPopularAreas = async (req, res) => {
+  try {
+    const data = await VisitasAreaModel.findAll({
+      attributes: [
+        "ck_area",
+        [Sequelize.fn("COUNT", Sequelize.col("id")), "visitas"]
+      ],
+      include: [
+        {
+          model: CatalogoAreasModel,
+          attributes: ["s_area"]
+        }
+      ],
+      group: ["VisitasAreaModel.ck_area", "CatalogoAreasModel.ck_area"],
+      order: [[Sequelize.literal("visitas"), "DESC"]],
+      limit: 5
+    });
+
+    const result = data.map(item => ({
+      area: item.CatalogoAreasModel.s_area,
+      visitas: item.dataValues.visitas
+    }));
+
+    res.json(result);
+  } catch (error) {
+    console.error("Error obteniendo áreas populares:", error);
+    res.status(500).json({ message: "Error en el servidor" });
+  }
+};
+
+
 
 // Obtener todas las áreas con filtros y paginación
 const getAllAreas = async (req, res) => {
@@ -414,5 +477,7 @@ module.exports = {
     updateArea,
     deleteArea,
     getAreasStats,
-    getSucursales
+    getSucursales,
+    registrarVisita,
+    getPopularAreas
 };
