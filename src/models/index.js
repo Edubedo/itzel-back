@@ -17,6 +17,9 @@ const CatalogoServiciosModel = require('./servicios.model');
 const CatalogoSucursalesModel = require('./sucursales.model');
 const CatalogoUsuariosModel = require('./tipos_usuarios.model');
 
+CatalogoServiciosModel.belongsTo(AreasModel, { foreignKey: 'ck_area', as: 'area' });
+
+
 
 const syncModels = async () => {
     try {
