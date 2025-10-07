@@ -263,7 +263,7 @@ const generateTicketHTML = (ticketData) => {
                 
                 <div class="info-row">
                     <div class="info-label">Fecha y Hora</div>
-                    <div class="info-value">${formatDate(ticketData.fechaCreacion)}</div>
+                    <div class="info-value">${new Date().toLocaleString()}</div>
                 </div>
                 
                 <div class="info-row">

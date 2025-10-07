@@ -6,6 +6,8 @@ const { Sucursal } = require("../../models/sucursales.model");
 const { ConnectionDatabase } = require("../../../config/connectDatabase");
 const crypto = require('crypto');
 const { generateTicketPDF } = require("../../utils/pdfGenerator");
+const RelacionEjecutivosSucursalesModel = require("../../models/relacion_ejecutivos_sucursales.model");
+const RelacionAsesoresSucursalesModel = require("../../models/relacion_asesores_sucursales.model");
 
 // Obtener todas las sucursales
 const getSucursales = async (req, res) => {
@@ -44,13 +46,15 @@ const getSucursales = async (req, res) => {
   }
 };
 
-// Obtener areas por sucursal
+// Obtener areas por sucursal (filtrando por tipo de cliente si es necesario)
 const getAreasPorSucursal = async (req, res) => {
   try {
     const { sucursalId } = req.params;
-    console.log('Obteniendo áreas para sucursal:', sucursalId);
+    const { esCliente } = req.query; // 1 para clientes, 0 para no clientes
+    console.log('Obteniendo áreas para sucursal:', sucursalId, 'esCliente:', esCliente);
     
     try {
+      // 1) Traer todas las áreas activas de la sucursal
       const areas = await CatalogoAreasModel.findAll({
         where: { 
           ck_sucursal: sucursalId,
@@ -59,8 +63,38 @@ const getAreasPorSucursal = async (req, res) => {
         order: [['s_area', 'ASC']]
       });
 
-      console.log('Áreas encontradas:', areas.length);
-      res.json({ success: true, areas });
+      // Si no se especifica tipo de cliente, devolver todas las áreas activas
+      if (areas.length === 0) {
+        return res.json({ success: true, areas: [] });
+      }
+
+      if (esCliente === undefined) {
+        console.log('Áreas encontradas (sin filtrar por tipo de cliente):', areas.length);
+        return res.json({ success: true, areas });
+      }
+
+      // 2) Filtrar áreas por existencia de al menos un servicio activo que coincida con i_es_para_clientes
+      const areaIds = areas.map(a => a.ck_area);
+
+      let whereServicios = {
+        ck_area: areaIds,
+        ck_estatus: 'ACTIVO'
+      };
+
+      // Normalizar esCliente a 0/1
+      const esClienteNum = parseInt(esCliente) || 0;
+      whereServicios.i_es_para_clientes = esClienteNum;
+
+      const servicios = await CatalogoServiciosModel.findAll({
+        where: whereServicios,
+        attributes: ['ck_area'],
+      });
+
+      const areaIdsConServicios = new Set(servicios.map(s => s.ck_area));
+      const areasFiltradas = areas.filter(a => areaIdsConServicios.has(a.ck_area));
+
+      console.log('Áreas encontradas después de filtrar por tipo cliente:', areasFiltradas.length);
+      res.json({ success: true, areas: areasFiltradas });
     } catch (dbError) {
       console.log('Error en DB, usando áreas de prueba:', dbError.message);
       
@@ -91,6 +125,62 @@ const getAreasPorSucursal = async (req, res) => {
   } catch (error) {
     console.error('Error al obtener áreas:', error);
     res.status(500).json({ success: false, message: 'Error al obtener áreas' });
+  }
+};
+
+// Sucursales accesibles por usuario autenticado y rol
+// Admin: todas; Ejecutivo: sucursales de RelacionEjecutivosSucursales; Asesor: de RelacionAsesoresSucursales
+const getSucursalesPorUsuario = async (req, res) => {
+  try {
+    const user = req.user; // viene del auth middleware
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'No autenticado' });
+    }
+
+    const tipoUsuario = user.tipo_usuario; // 1 admin, 2 ejecutivo, 4 asesor, etc.
+
+    if (tipoUsuario === 1) {
+      // Administrador: todas
+      const sucursales = await Sucursal.findAll({
+        where: { ck_estatus: 'ACTIVO' },
+        order: [['s_nombre_sucursal', 'ASC']]
+      });
+      return res.json({ success: true, sucursales });
+    }
+
+    let sucursalIds = [];
+    if (tipoUsuario === 2) {
+      // Ejecutivo
+      const relaciones = await RelacionEjecutivosSucursalesModel.findAll({
+        where: { ck_usuario: user.uk_usuario, ck_estatus: 'ACTIVO' },
+        attributes: ['ck_sucursal']
+      });
+      sucursalIds = [...new Set(relaciones.map(r => r.ck_sucursal).filter(Boolean))];
+    } else if (tipoUsuario === 4) {
+      // Asesor
+      const relaciones = await RelacionAsesoresSucursalesModel.findAll({
+        where: { ck_usuario: user.uk_usuario, ck_estatus: 'ACTIVO' },
+        attributes: ['ck_sucursal']
+      });
+      sucursalIds = [...new Set(relaciones.map(r => r.ck_sucursal).filter(Boolean))];
+    } else {
+      // Otros roles: sin acceso específico
+      return res.json({ success: true, sucursales: [] });
+    }
+
+    if (sucursalIds.length === 0) {
+      return res.json({ success: true, sucursales: [] });
+    }
+
+    const sucursales = await Sucursal.findAll({
+      where: { ck_sucursal: sucursalIds, ck_estatus: 'ACTIVO' },
+      order: [['s_nombre_sucursal', 'ASC']]
+    });
+
+    return res.json({ success: true, sucursales });
+  } catch (error) {
+    console.error('Error al obtener sucursales por usuario:', error);
+    return res.status(500).json({ success: false, message: 'Error al obtener sucursales por usuario' });
   }
 };
 
@@ -179,6 +269,7 @@ const crearTurno = async (req, res) => {
       FROM operacion_turnos 
       WHERE ck_sucursal = :sucursalId 
         AND ck_area = :areaId
+        AND DATE(d_fecha_creacion) = CURRENT_DATE
     `, {
       replacements: { sucursalId: ck_sucursal, areaId: ck_area },
       type: QueryTypes.SELECT,
@@ -303,6 +394,7 @@ const getTurnos = async (req, res) => {
       LEFT JOIN catalogo_servicios cs ON cs.ck_servicio = ot.ck_servicio
       LEFT JOIN configuracion_usuarios cu ON cu.ck_usuario = ot.ck_usuario_atendio
       WHERE ot.ck_estatus != 'ATENDI'
+        AND DATE(ot.d_fecha_creacion) = CURRENT_DATE
       ${whereClause}
       ORDER BY ot.i_numero_turno ASC
     `, {
@@ -541,6 +633,7 @@ const notificaciones = async(req, res) => {
 }
 module.exports = {
   getSucursales,
+  getSucursalesPorUsuario,
   getAreasPorSucursal,
   getServiciosPorArea,
   crearTurno,

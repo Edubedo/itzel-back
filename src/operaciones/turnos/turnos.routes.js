@@ -4,6 +4,7 @@ const router = express.Router();
 
 const { 
   getSucursales,
+  getSucursalesPorUsuario,
   getAreasPorSucursal,
   getServiciosPorArea,
   crearTurno,
@@ -14,9 +15,12 @@ const {
   descargarTicketPDF,
   notificaciones
 } = require("./turnos.controller");
+const authMiddleware = require("../../../middlewares/authMiddleware");
 
 // Rutas para obtener catálogos
 router.get('/sucursales', getSucursales);
+// Sucursales filtradas por usuario autenticado y rol
+router.get('/sucursales-usuario', authMiddleware, getSucursalesPorUsuario);
 router.get('/areas/:sucursalId', getAreasPorSucursal);
 router.get('/servicios/:areaId', getServiciosPorArea);
 
