@@ -29,7 +29,7 @@ const loginUsuario = async (req, res) => {
         
         if (!usuario) {
             console.log("Usuario no encontrado");
-            return res.status(404).json({ message: "Usuario o correo electrónico no encontrado" });
+            return res.status(404).json({ message: "El correo electrónico o contraseña que ingresaste es incorrecto" });
         }
 
         console.log("Usuario encontrado:", usuario.s_nombre);
