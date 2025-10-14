@@ -11,46 +11,46 @@ const loginUsuario = async (req, res) => {
     try {
         // Detectar si s_usuario es un email (contiene @) o un nombre de usuario
         const isEmail = s_usuario.includes('@');
-        const whereCondition = isEmail ? 
-            { s_correo_electronico: s_usuario } : 
+        const whereCondition = isEmail ?
+            { s_correo_electronico: s_usuario } :
             { s_nombre: s_usuario }; // Buscar por nombre si no es email
 
         console.log("whereCondition: ", whereCondition)
-        const usuario = await ConfiguracionUsuariosModel.findOne({ 
+        const usuario = await ConfiguracionUsuariosModel.findOne({
             where: whereCondition,
             attributes: [
-                'ck_usuario', 
-                's_nombre', 
+                'ck_usuario',
+                's_nombre',
                 's_correo_electronico',
                 's_password',
                 'i_tipo_usuario'
             ]
         });
-        
+
         if (!usuario) {
             console.log("Usuario no encontrado");
-            return res.status(404).json({ message: "El correo electrónico o contraseña que ingresaste es incorrecto" });
+            return res.status(404).json({ message: "Usuario o correo electrónico no encontrado", code: "USER_NOT_FOUND" });
         }
 
         console.log("Usuario encontrado:", usuario.s_nombre);
 
         // Comparar la contraseña encriptada
-        const isPasswordValid =  await bcrypt.compare(s_contrasena, usuario.s_password);
+        const isPasswordValid = await bcrypt.compare(s_contrasena, usuario.s_password);
         console.log("Contraseña válida:", isPasswordValid);
-        
+
         if (!isPasswordValid) {
             console.log("Contraseña incorrecta");
-            return res.status(401).json({ message: "Contraseña incorrecta" });
+            return res.status(401).json({ message: "Contraseña incorrecta", code: "WRONG_PASSWORD" });
         }
 
         // Generar token JWT incluyendo tipo_usuario en el payload
-        const tokenPayload = { 
-            uk_usuario: usuario.ck_usuario, 
+        const tokenPayload = {
+            uk_usuario: usuario.ck_usuario,
             s_usuario: usuario.s_nombre, // Usar nombre como identificador de usuario
             s_nombre: usuario.s_nombre,
             tipo_usuario: usuario.i_tipo_usuario || 3 // Por defecto Asesor
         };
-        
+
         const token = jwt.sign(
             tokenPayload,
             SECRET_KEY,
@@ -76,8 +76,8 @@ const loginUsuario = async (req, res) => {
 const registerUsuario = async (req, res) => {
     const { s_usuario, s_contrasena, s_correo_electronico, s_nombre } = req.body;
     try {
-        const existingUser = await ConfiguracionUsuariosModel.findOne({ 
-            where: { s_correo_electronico } 
+        const existingUser = await ConfiguracionUsuariosModel.findOne({
+            where: { s_correo_electronico }
         });
         if (existingUser) {
             return res.status(400).json({ message: "El correo electrónico ya está registrado" });
@@ -98,8 +98,8 @@ const registerUsuario = async (req, res) => {
         });
 
         // Generar token JWT para el nuevo usuario
-        const tokenPayload = { 
-            uk_usuario: newUser.ck_usuario, 
+        const tokenPayload = {
+            uk_usuario: newUser.ck_usuario,
             s_usuario: newUser.s_nombre,
             s_nombre: newUser.s_nombre,
             tipo_usuario: newUser.i_tipo_usuario || 3
@@ -111,14 +111,14 @@ const registerUsuario = async (req, res) => {
             { expiresIn: "3d" }
         );
 
-        return res.status(201).json({ 
-            message: "Usuario registrado exitosamente", 
+        return res.status(201).json({
+            message: "Usuario registrado exitosamente",
             uk_usuario: newUser.ck_usuario,
             s_nombre: newUser.s_nombre,
             s_usuario: newUser.s_nombre,
             s_correo_electronico: newUser.s_correo_electronico,
             tipo_usuario: newUser.i_tipo_usuario,
-            token 
+            token
         });
     } catch (error) {
         console.error('Error en registro:', error);
@@ -146,47 +146,47 @@ const protectedInUsuario = async (req, res) => {
 
 const refreshToken = async (req, res) => {
     const token = req.headers.authorization?.split(" ")[1];
-    
+
     if (!token) {
-        return res.status(401).json({ 
+        return res.status(401).json({
             message: "Token no proporcionado",
-            error: "UNAUTHORIZED" 
+            error: "UNAUTHORIZED"
         });
     }
 
     try {
         // Verificar el token actual (aunque esté desactualizado, debe ser válido)
         const decoded = jwt.verify(token, SECRET_KEY);
-        
+
         // Obtener datos actualizados del usuario desde la base de datos
         const usuario = await ConfiguracionUsuariosModel.findOne({
-            where: { 
+            where: {
                 ck_usuario: decoded.uk_usuario,
                 ck_estatus: 'ACTIVO'
             },
             attributes: [
-                'ck_usuario', 
-                's_nombre', 
+                'ck_usuario',
+                's_nombre',
                 's_correo_electronico',
                 'i_tipo_usuario'
             ]
         });
 
         if (!usuario) {
-            return res.status(404).json({ 
+            return res.status(404).json({
                 message: "Usuario no encontrado o inactivo",
                 error: "USER_NOT_FOUND"
             });
         }
 
         // Generar nuevo token con datos actualizados
-        const tokenPayload = { 
-            uk_usuario: usuario.ck_usuario, 
-            s_usuario: usuario.s_nombre, 
+        const tokenPayload = {
+            uk_usuario: usuario.ck_usuario,
+            s_usuario: usuario.s_nombre,
             s_nombre: usuario.s_nombre,
             tipo_usuario: usuario.i_tipo_usuario || 3
         };
-        
+
         const newToken = jwt.sign(
             tokenPayload,
             SECRET_KEY,
@@ -202,22 +202,22 @@ const refreshToken = async (req, res) => {
             token: newToken
         };
 
-        return res.status(200).json({ 
-            message: "Token actualizado exitosamente", 
-            ...dataRetornarUsuario 
+        return res.status(200).json({
+            message: "Token actualizado exitosamente",
+            ...dataRetornarUsuario
         });
-        
+
     } catch (error) {
         if (error.name === 'TokenExpiredError') {
-            return res.status(401).json({ 
+            return res.status(401).json({
                 message: "Token expirado. Inicie sesión nuevamente",
-                error: "TOKEN_EXPIRED" 
+                error: "TOKEN_EXPIRED"
             });
         }
-        
-        return res.status(401).json({ 
+
+        return res.status(401).json({
             message: "Token inválido",
-            error: "INVALID_TOKEN" 
+            error: "INVALID_TOKEN"
         });
     }
 };

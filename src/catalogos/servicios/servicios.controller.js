@@ -1,4 +1,4 @@
-const { CatalogoServiciosModel } = require("../../models");
+const { CatalogoServiciosModel, AreasModel } = require("../../models");
 const { Op } = require("sequelize");
 
 
@@ -10,20 +10,33 @@ const getServicios = async (req, res) => {
   try {
     const getServicios = await CatalogoServiciosModel.findAll({
       where: {
-        "ck_estatus" : "ACTIVO"
-      }
-    })
+        "ck_estatus": "ACTIVO"
+      },
+      include: [
+        {
+          model: AreasModel,
+          as: "area",
+          attributes: ["s_area"]
+        }
+      ]
+    });
 
-    return res.json({ getServicios, message: "getServicios ok" });
+    // Mapear para agregar area_nombre directo en la respuesta
+    const serviciosConArea = getServicios.map(servicio => {
+      const data = servicio.toJSON();
+      return {
+        ...data,
+        area_nombre: data.area ? data.area.s_area : ""
+      };
+    });
+
+    return res.json({ getServicios: serviciosConArea, message: "getServicios ok" });
   } catch (error) {
     console.error("Error en getServicios:", error);
     return res.status(500).json({ error: "Error al obtener los servicios" });
   }
 };
 
-/**
- * Obtener un servicio por ID
- */
 const getServicioById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -46,16 +59,16 @@ const getServicioById = async (req, res) => {
   }
 };
 
-/**
- * Crear un nuevo servicio
- */
 const createServicio = async (req, res) => {
   try {
-    const { s_servicio, s_descripcion_servicio, ck_area, ck_estatus, c_codigo_servicio } = req.body;
+    let { s_servicio, s_descripcion_servicio, ck_area, ck_estatus, c_codigo_servicio } = req.body;
 
     if (!s_servicio || !ck_area || !ck_estatus || !c_codigo_servicio) {
       return res.status(400).json({ error: "Faltan campos obligatorios" });
     }
+
+    // Normalizar estatus
+    if (ck_estatus === "INACTIVO") ck_estatus = "INACTI";
 
     const nuevoServicio = await CatalogoServiciosModel.create({
       s_servicio,
@@ -72,13 +85,13 @@ const createServicio = async (req, res) => {
   }
 };
 
-/**
- * Actualizar un servicio
- */
 const updateServicio = async (req, res) => {
   try {
     const { id } = req.params;
-    const { s_servicio, s_descripcion_servicio, ck_area, ck_estatus, c_codigo_servicio } = req.body;
+    let { s_servicio, s_descripcion_servicio, ck_area, ck_estatus, c_codigo_servicio } = req.body;
+
+    // Normalizar estatus
+    if (ck_estatus === "INACTIVO") ck_estatus = "INACTI";
 
     const servicio = await CatalogoServiciosModel.findByPk(id);
     if (!servicio) {
@@ -100,9 +113,6 @@ const updateServicio = async (req, res) => {
   }
 };
 
-/**
- * Eliminar un servicio
- */
 const deleteServicio = async (req, res) => {
   try {
     const { id } = req.params;
@@ -121,14 +131,11 @@ const deleteServicio = async (req, res) => {
   }
 };
 
-/**
- * Estadísticas de servicios (ejemplo: cantidad total, activos, inactivos)
- */
 const getServiciosStats = async (req, res) => {
   try {
     const total = await CatalogoServiciosModel.count();
     const activos = await CatalogoServiciosModel.count({ where: { ck_estatus: "ACTIVO" } });
-    const inactivos = await CatalogoServiciosModel.count({ where: { ck_estatus: "INACTIVO" } });
+    const inactivos = await CatalogoServiciosModel.count({ where: { ck_estatus: "INACTI" } });
 
     return res.json({ total, activos, inactivos });
   } catch (error) {
