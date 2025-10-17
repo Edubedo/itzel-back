@@ -61,7 +61,7 @@ const getServicioById = async (req, res) => {
 
 const createServicio = async (req, res) => {
   try {
-    let { s_servicio, s_descripcion_servicio, ck_area, ck_estatus, c_codigo_servicio } = req.body;
+    let { s_servicio, s_descripcion_servicio, ck_area, ck_estatus, c_codigo_servicio, i_es_para_clientes } = req.body;
 
     if (!s_servicio || !ck_area || !ck_estatus || !c_codigo_servicio) {
       return res.status(400).json({ error: "Faltan campos obligatorios" });
@@ -70,12 +70,17 @@ const createServicio = async (req, res) => {
     // Normalizar estatus
     if (ck_estatus === "INACTIVO") ck_estatus = "INACTI";
 
+    const esParaClientes = i_es_para_clientes !== undefined ? Number(i_es_para_clientes) : 1;
+
+    console.log("Creando servicio con i_es_para_clientes:", esParaClientes, "Tipo:", typeof esParaClientes);
+
     const nuevoServicio = await CatalogoServiciosModel.create({
       s_servicio,
       s_descripcion_servicio,
       ck_area,
       ck_estatus,
       c_codigo_servicio,
+      i_es_para_clientes: esParaClientes,
     });
 
     return res.status(201).json({ data: nuevoServicio, message: "Servicio creado correctamente" });
@@ -88,10 +93,14 @@ const createServicio = async (req, res) => {
 const updateServicio = async (req, res) => {
   try {
     const { id } = req.params;
-    let { s_servicio, s_descripcion_servicio, ck_area, ck_estatus, c_codigo_servicio } = req.body;
+    let { s_servicio, s_descripcion_servicio, ck_area, ck_estatus, c_codigo_servicio, i_es_para_clientes } = req.body;
 
     // Normalizar estatus
     if (ck_estatus === "INACTIVO") ck_estatus = "INACTI";
+
+    const esParaClientes = i_es_para_clientes !== undefined ? Number(i_es_para_clientes) : 1;
+
+    console.log("Actualizando servicio con i_es_para_clientes:", esParaClientes, "Tipo:", typeof esParaClientes);
 
     const servicio = await CatalogoServiciosModel.findByPk(id);
     if (!servicio) {
@@ -104,6 +113,7 @@ const updateServicio = async (req, res) => {
       ck_area,
       ck_estatus,
       c_codigo_servicio,
+      i_es_para_clientes: esParaClientes,
     });
 
     return res.json({ data: servicio, message: "Servicio actualizado correctamente" });
