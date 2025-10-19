@@ -13,7 +13,8 @@ const {
   finalizarTurno,
   getEstadisticasTurnos,
   descargarTicketPDF,
-  notificaciones
+  notificaciones,
+  marcarLeida
 } = require("./turnos.controller");
 const authMiddleware = require("../../../middlewares/authMiddleware");
 
@@ -36,6 +37,7 @@ router.get('/ticket/:turnoId/pdf', descargarTicketPDF);
 
 
 router.get('/notificaciones', notificaciones);
+router.put('/leer/:id', marcarLeida );
 
 
 module.exports = router;

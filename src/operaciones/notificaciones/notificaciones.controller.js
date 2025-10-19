@@ -1,22 +1,26 @@
-const { Sequelize, QueryTypes } = require("sequelize");
 const OperacionTurnosModel = require("../../models/operacion_turnos.model");
-const { ConnectionDatabase } = require("../../../config/connectDatabase");
+
+// Arreglo en memoria para mantener las notificaciones y su estado
+let notificaciones = [];
 
 // Obtener notificaciones
 const getNotificaciones = async (req, res) => {
   try {
-    console.log("Obteniendo notificaciones, query params:", req.query);
+    const { uk_usuario, ck_sucursal } = req.query;
 
-    // Traer todos los turnos activos que generarán notificaciones
+    if (!uk_usuario) {
+      return res.status(400).json({ success: false, message: "Falta uk_usuario" });
+    }
+
+    // Buscar turnos activos
     let turnos = [];
     try {
       turnos = await OperacionTurnosModel.findAll({
         where: { ck_estatus: "ACTIVO" },
         order: [["d_fecha_creacion", "ASC"]],
       });
-      console.log("Turnos obtenidos de la DB:", turnos.length);
     } catch (dbError) {
-      console.log("Error en DB, usando turnos de prueba:", dbError.message);
+      console.warn("Error al consultar DB, usando datos de prueba:", dbError.message);
       // Datos de prueba
       turnos = [
         {
@@ -38,18 +42,32 @@ const getNotificaciones = async (req, res) => {
       ];
     }
 
-    // Construir array de notificaciones
-    const notificaciones = turnos.map((t) => ({
-      id: t.ck_turno,
-      mensaje: `Nuevo turno: ${t.i_numero_turno}`,
-      area: t.ck_area,
-      servicio: t.ck_servicio,
-      sucursal: t.ck_sucursal,
-      fecha: t.d_fecha_creacion,
-      leida: false,
-    }));
+    // Actualizar lista de notificaciones sin duplicar
+    turnos.forEach((t) => {
+      const existe = notificaciones.find((n) => n.id === t.ck_turno);
+      if (!existe) {
+        notificaciones.push({
+          id: t.ck_turno,
+          mensaje: `Nuevo turno: ${t.i_numero_turno}`,
+          area: t.ck_area,
+          servicio: t.ck_servicio,
+          sucursal: t.ck_sucursal,
+          sucursalId: t.ck_sucursal,
+          fecha: t.d_fecha_creacion,
+          leida: false,
+        });
+      }
+    });
 
-    res.json({ success: true, notificaciones });
+    // 🔹 Filtrar notificaciones por sucursal
+    let notisFiltradas = notificaciones;
+    if (ck_sucursal) {
+      notisFiltradas = notificaciones.filter(
+        (n) => String(n.sucursalId) === String(ck_sucursal)
+      );
+    }
+
+    res.json({ success: true, notificaciones: notisFiltradas });
   } catch (error) {
     console.error("Error al obtener notificaciones:", error);
     res.status(500).json({
@@ -64,24 +82,14 @@ const getNotificaciones = async (req, res) => {
 const marcarComoLeida = async (req, res) => {
   try {
     const { id } = req.params;
-
-    // Para este ejemplo, asumimos que las notificaciones están basadas en turnos activos
-    const turno = await OperacionTurnosModel.findByPk(id);
-    if (!turno) {
-      return res.status(404).json({
-        success: false,
-        message: "Notificación no encontrada",
-      });
+    const noti = notificaciones.find((n) => n.id === id);
+    if (!noti) {
+      return res.status(404).json({ success: false, message: "Notificación no encontrada" });
     }
 
-    // Aquí solo marcamos como leída porque no hay tabla de notificaciones
-    console.log(`Marcando notificación de turno ${id} como leída`);
+    noti.leida = true;
 
-    res.json({
-      success: true,
-      message: "Notificación marcada como leída",
-      id,
-    });
+    res.json({ success: true, message: "Notificación marcada como leída", notificacion: noti });
   } catch (error) {
     console.error("Error al marcar notificación como leída:", error);
     res.status(500).json({
@@ -92,7 +100,4 @@ const marcarComoLeida = async (req, res) => {
   }
 };
 
-module.exports = {
-  getNotificaciones,
-  marcarComoLeida,
-};
+module.exports = { getNotificaciones, marcarComoLeida };
