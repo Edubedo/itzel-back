@@ -296,7 +296,7 @@ const crearTurno = async (req, res) => {
       ck_cliente: es_cliente ? ck_cliente : null,
       i_numero_turno: numeroTurno,
       ck_estatus: 'ACTIVO',
-      i_seccion: 1,
+      i_seccion: 1
     });
 
     console.log("nuevoTurno: ", nuevoTurno)
@@ -596,41 +596,71 @@ const descargarTicketPDF = async (req, res) => {
   }
 };
 
-const notificaciones = async(req, res) => {
-  try { 
-      // console.log("api", req.query)
-        // Trae todos los turnos pendientes
-        const turnos = await OperacionTurnosModel.findAll({
-          where: { ck_estatus: "ACTIVO" },
-          order: [["d_fecha_creacion", "ASC"]],
-        });
+// Obtener notificaciones
+const notificaciones = async (req, res) => {
+  try {
+    const { sucursalId } = req.query;
 
-        // console.log("turnos: ", turnos)
-    
-        // turnos.forEach((t) => {
-          // Notificación de nuevo turno mapeo
-          const notificaciones = turnos.map(t => ({
-            id: t.ck_turno,
-            mensaje: `Nuevo turno: ${t.ck_turno}`,
-            area: t.ck_area,
-            servicio: t.ck_servicio,
-            sucursal: t.ck_sucursal,
-            fecha: t.d_fecha_creacion,
-            leida: false,
-          }));
+    const turnos = await ConnectionDatabase.query(
+      `
+      SELECT 
+        ot.ck_turno AS id,
+        ot.i_numero_turno AS numero_turno,
+        cs.s_servicio AS servicio,
+        ca.s_area AS area,
+        ot.d_fecha_creacion AS fecha,
+        ot.ck_sucursal,
+        su.s_nombre_sucursal AS sucursal
+      FROM operacion_turnos ot
+      LEFT JOIN catalogo_area ca ON ca.ck_area = ot.ck_area
+      LEFT JOIN catalogo_servicios cs ON cs.ck_servicio = ot.ck_servicio
+      LEFT JOIN catalogo_sucursales su ON su.ck_sucursal = ot.ck_sucursal
+      WHERE ot.ck_estatus = 'ACTIVO'
+        ${sucursalId ? "AND ot.ck_sucursal = :sucursalId" : ""}
+      ORDER BY ot.d_fecha_creacion DESC
+      `,
+      {
+        type: QueryTypes.SELECT,
+        replacements: sucursalId ? { sucursalId } : {},
+      }
+    );
 
-          res.json({ success: true, notificaciones});
-        } catch (error){
-          console.error("Error al obtener notificacione:", error);
-          res.status(500).json({siccess: false, message: "Error al obtener notificación"});
-        }
-    
-        // });
-    
-        res.json({ success: true, turnos });
+    const formatted = turnos.map(t => ({
+      id: t.id,
+      numero_turno: t.numero_turno,        // ahora trae número correcto
+      s_servicio: t.servicio,
+      s_area: t.area,
+      mensaje: `Turno ${t.numero_turno} en ${t.servicio} (${t.area})`,
+      fecha: t.fecha,                       // sin toISOString(), formatear en front
+      ck_sucursal: t.ck_sucursal,
+      s_nombre_sucursal: t.sucursal,
+    }));
 
-  
-}
+    res.status(200).json({
+      ok: true,
+      notificaciones: formatted,
+    });
+  } catch (error) {
+    console.error("Error al obtener notificaciones:", error);
+    res.status(500).json({ ok: false, mensaje: "Error al obtener las notificaciones" });
+  }
+};
+
+
+
+const marcarLeida = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log("Marcando notificación como leída:", id);
+    res.status(200).json({ ok: true, mensaje: "Notificación marcada como leída" });
+  } catch (error) {
+    console.error("Error al marcar notificación:", error);
+    res.status(500).json({ ok: false, mensaje: "Error al marcar la notificación" });
+  }
+};
+
+
+
 module.exports = {
   getSucursales,
   getSucursalesPorUsuario,
@@ -642,7 +672,8 @@ module.exports = {
   finalizarTurno,
   getEstadisticasTurnos,
   descargarTicketPDF,
-  notificaciones
+  notificaciones,
+  marcarLeida
 };
   
 
