@@ -17,6 +17,10 @@ const {
 } = require("./turnos.controller");
 const authMiddleware = require("../../../middlewares/authMiddleware");
 
+//arreglo dash
+
+
+
 // Rutas para obtener catálogos
 router.get('/sucursales', getSucursales);
 // Sucursales filtradas por usuario autenticado y rol

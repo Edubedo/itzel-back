@@ -9,6 +9,7 @@ const { generateTicketPDF } = require("../../utils/pdfGenerator");
 const RelacionEjecutivosSucursalesModel = require("../../models/relacion_ejecutivos_sucursales.model");
 const RelacionAsesoresSucursalesModel = require("../../models/relacion_asesores_sucursales.model");
 
+
 // Obtener todas las sucursales
 const getSucursales = async (req, res) => {
   try {
