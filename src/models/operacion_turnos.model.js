@@ -38,7 +38,7 @@ const OperacionTurnosModel = ConnectionDatabase.define('OperacionTurnosModel', {
         allowNull: true
     },
     t_tiempo_espera: {
-        type: DataTypes.TIME(6),
+        type: DataTypes.TIME(),
         allowNull: true
     },
     t_tiempo_atendido: {
@@ -62,14 +62,11 @@ const OperacionTurnosModel = ConnectionDatabase.define('OperacionTurnosModel', {
         type: DataTypes.CHAR(36),
         allowNull: true
     },
-    created_at: {
-        type: DataTypes.DATE,
-        allowNull: true,
-        defaultValue: DataTypes.NOW
-    }
 }, {
     tableName: 'operacion_turnos',
-    timestamps: false,
+    timestamps: true,
+    createdAt: 'd_fecha_creacion',
+    updatedAt: false
 });
 
 module.exports = OperacionTurnosModel;

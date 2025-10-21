@@ -37,7 +37,13 @@ const ConnectionDatabase = new Sequelize(NAME_DEV, USER_DEV, PASSWORD_DEV, {
     dialect: DIALECT_DEV,
     port: PORT_DEV,
     // quitar que se vean los queries
-    logging: false
+    logging: false,
+    timezone: '-06:00', // ⬅️ zona horaria de Monterrey (México)
+    dialectOptions: {
+        timezone: 'local',
+        dateStrings: true,
+        typeCast: true
+      },
 });
 
 
