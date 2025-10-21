@@ -9,6 +9,7 @@ const { generateTicketPDF } = require("../../utils/pdfGenerator");
 const RelacionEjecutivosSucursalesModel = require("../../models/relacion_ejecutivos_sucursales.model");
 const RelacionAsesoresSucursalesModel = require("../../models/relacion_asesores_sucursales.model");
 
+
 // Obtener todas las sucursales
 const getSucursales = async (req, res) => {
   try {
@@ -296,7 +297,8 @@ const crearTurno = async (req, res) => {
       ck_cliente: es_cliente ? ck_cliente : null,
       i_numero_turno: numeroTurno,
       ck_estatus: 'ACTIVO',
-      i_seccion: 1
+      i_seccion: 1,
+      t_tiempo_espera: new Date().toTimeString().slice(0, 8)
     });
 
     console.log("nuevoTurno: ", nuevoTurno)

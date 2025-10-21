@@ -19,6 +19,10 @@ const {
 } = require("./turnos.controller");
 const authMiddleware = require("../../../middlewares/authMiddleware");
 
+//arreglo dash
+
+
+
 // Rutas para obtener catálogos
 router.get('/sucursales', getSucursales);
 // Sucursales filtradas por usuario autenticado y rol
@@ -39,6 +43,9 @@ router.get('/ticket/:turnoId/pdf', descargarTicketPDF);
 
 router.get('/notificaciones', notificaciones);
 router.put('/leer/:id', marcarLeida );
+
+//Estadisticas 
+router.get('/estadisticas', getEstadisticasTurnos);
 
 
 module.exports = router;
