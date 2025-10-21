@@ -659,8 +659,46 @@ const marcarLeida = async (req, res) => {
   }
 };
 
+// ▼▼▼ PEGA ESTA FUNCIÓN AQUÍ ▼▼▼
+const cancelarTurno = async (req, res) => {
+  try {
+    const { id } = req.params; 
 
+    // 1. Buscamos el turno
+    const turno = await OperacionTurnosModel.findByPk(id);
 
+    // 2. Verificamos si existe
+    if (!turno) {
+      console.error(`Intento de cancelar turno no encontrado. ID: ${id}`);
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Turno no encontrado.' 
+      });
+    }
+
+    // 3. Actualizamos el estado
+    turno.ck_estatus = 'CANCEL';
+    
+    // 4. Guardamos el cambio en la BD
+    await turno.save();
+
+    // 5. Respondemos con éxito
+    console.log(`Turno ${id} cancelado exitosamente.`);
+    res.status(200).json({ 
+      success: true, 
+      message: 'Turno cancelado correctamente.' 
+    });
+
+  } catch (error) {
+    // Si algo falla (ej. .save())
+    console.error('Error al guardar la cancelación del turno:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error interno del servidor al cancelar turno.' 
+    });
+  }
+};
+// ▲▲▲ FIN DE LA FUNCIÓN ▲▲▲
 module.exports = {
   getSucursales,
   getSucursalesPorUsuario,
@@ -673,7 +711,8 @@ module.exports = {
   getEstadisticasTurnos,
   descargarTicketPDF,
   notificaciones,
-  marcarLeida
+  marcarLeida,
+  cancelarTurno
 };
   
 
