@@ -4,12 +4,17 @@ const { config } = require('dotenv');
 const routerGlobal = require('./routes/routes.js'); // Correct path to the router file 
 const { ConnectionDatabaseAuthenticated } = require('./config/connectDatabase.js');
 const cookieParser = require('cookie-parser');
+const dashboardRoutes = require('./src/dashboard/dashboard.routes.js'); // Ruta al archivo de rutas
+
+
 
 // Importar modelos para establecer asociaciones
 require('./src/models/index.js');
 
 config();
 const app = express();
+
+
 
 // Configuración de CORS CORRECTA para desarrollo
 app.use(cors({
@@ -44,6 +49,7 @@ app.use('/api/configuracion_sistema', require('./src/configuracion/configuracion
 
 // Rutas
 app.use('/api', routerGlobal); // Llamas a las rutas
+app.use('/api/operaciones',dashboardRoutes);
 
 
 // Middleware de manejo de errores

@@ -11,6 +11,8 @@ router.get('/test', (req, res) => {
   });
 });
 
+
+
 // Importar router de autenticación
 router.use("/auth", require("../src/core/auth/auth.router"));
 
@@ -37,5 +39,12 @@ router.use("/auth", require("../src/core/auth/auth.router"));
 
 // RUTA PARA BÚSQUEDA GENERAL
 router.use("/", require("./busquedaGeneral"));
+
+// Importar las rutas del dashboard
+const dashboardRoutes = require('../src/dashboard/dashboard.routes');
+
+// Usar las rutas del dashboard
+router.use('/operaciones', dashboardRoutes);  // Asegúrate de que el prefijo esté bien configurado
+
 
 module.exports = router;
