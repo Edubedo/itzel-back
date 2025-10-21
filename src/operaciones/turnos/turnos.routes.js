@@ -14,7 +14,8 @@ const {
   getEstadisticasTurnos,
   descargarTicketPDF,
   notificaciones,
-  marcarLeida
+  marcarLeida,
+  cancelarTurno
 } = require("./turnos.controller");
 const authMiddleware = require("../../../middlewares/authMiddleware");
 
@@ -34,7 +35,7 @@ router.get('/obtenerTurnos', getTurnos);
 router.post('/crear', crearTurno);
 router.put('/atender/:turnoId', atenderTurno);
 router.put('/finalizar/:turnoId', finalizarTurno);
-
+router.delete('/cancelar/:id', cancelarTurno);
 
 // Ruta para descargar ticket PDF
 router.get('/ticket/:turnoId/pdf', descargarTicketPDF);
