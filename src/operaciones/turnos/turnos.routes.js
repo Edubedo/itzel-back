@@ -39,5 +39,8 @@ router.get('/ticket/:turnoId/pdf', descargarTicketPDF);
 router.get('/notificaciones', notificaciones);
 router.put('/leer/:id', marcarLeida );
 
+//Estadisticas 
+router.get('/estadisticas', getEstadisticasTurnos);
+
 
 module.exports = router;
