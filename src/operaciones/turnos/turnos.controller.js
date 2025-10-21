@@ -661,7 +661,6 @@ const marcarLeida = async (req, res) => {
   }
 };
 
-// ▼▼▼ PEGA ESTA FUNCIÓN AQUÍ ▼▼▼
 const cancelarTurno = async (req, res) => {
   try {
     const { id } = req.params; 
@@ -678,13 +677,13 @@ const cancelarTurno = async (req, res) => {
       });
     }
 
-    // 3. Actualizamos el estado
+    //  Actualizamos el estado
     turno.ck_estatus = 'CANCEL';
     
-    // 4. Guardamos el cambio en la BD
+    //  Guardamos el cambio en la BD
     await turno.save();
 
-    // 5. Respondemos con éxito
+    // Respondemos con éxito
     console.log(`Turno ${id} cancelado exitosamente.`);
     res.status(200).json({ 
       success: true, 
@@ -700,7 +699,6 @@ const cancelarTurno = async (req, res) => {
     });
   }
 };
-// ▲▲▲ FIN DE LA FUNCIÓN ▲▲▲
 module.exports = {
   getSucursales,
   getSucursalesPorUsuario,
@@ -716,6 +714,4 @@ module.exports = {
   marcarLeida,
   cancelarTurno
 };
-  
-
   
