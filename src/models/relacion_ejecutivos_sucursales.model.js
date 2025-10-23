@@ -19,7 +19,7 @@ const RelacionEjecutivosSucursalesModel = ConnectionDatabase.define('RelacionEje
     },
     ck_sucursal: {
         type: DataTypes.CHAR(36),
-        allowNull: true
+        allowNull: false
     },
     ck_area: {
         type: DataTypes.CHAR(36),
