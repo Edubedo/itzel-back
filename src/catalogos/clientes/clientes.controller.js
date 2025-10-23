@@ -421,6 +421,68 @@ const getTiposContrato = async (req, res) => {
     }
 };
 
+// Validar número de contrato de cliente
+const validateContractNumber = async (req, res) => {
+    try {
+        const { c_codigo_contrato } = req.body;
+
+        if (!c_codigo_contrato) {
+            return res.status(400).json({
+                success: false,
+                message: 'El número de contrato es requerido'
+            });
+        }
+
+        const cliente = await CatalogoClientesModel.findOne({
+            where: { 
+                c_codigo_contrato,
+                ck_estatus: 'ACTIVO'
+            },
+            attributes: [
+                'ck_cliente',
+                'c_codigo_cliente',
+                's_nombre',
+                's_apellido_paterno_cliente',
+                's_apellido_materno_cliente',
+                's_tipo_contrato',
+                'i_cliente_premium',
+                'c_codigo_contrato',
+                'ck_estatus'
+            ]
+        });
+
+        if (!cliente) {
+            return res.status(404).json({
+                success: false,
+                message: 'Número de contrato no encontrado o cliente inactivo'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Cliente encontrado',
+            data: {
+                ck_cliente: cliente.ck_cliente,
+                c_codigo_cliente: cliente.c_codigo_cliente,
+                s_nombre: cliente.s_nombre,
+                s_apellido_paterno: cliente.s_apellido_paterno_cliente,
+                s_apellido_materno: cliente.s_apellido_materno_cliente,
+                s_tipo_contrato: cliente.s_tipo_contrato,
+                l_cliente_premium: cliente.i_cliente_premium === 1,
+                c_codigo_contrato: cliente.c_codigo_contrato,
+                ck_estatus: cliente.ck_estatus
+            }
+        });
+
+    } catch (error) {
+        console.error('Error al validar número de contrato:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor'
+        });
+    }
+};
+
 module.exports = {
     getAllClientes,
     getClienteById,
@@ -428,5 +490,6 @@ module.exports = {
     updateCliente,
     deleteCliente,
     getClientesStats,
-    getTiposContrato
+    getTiposContrato,
+    validateContractNumber
 };

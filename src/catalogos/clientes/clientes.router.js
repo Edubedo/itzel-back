@@ -8,6 +8,7 @@ router.get('/stats', clientesController.getClientesStats);
 router.get('/tipos-contrato', clientesController.getTiposContrato);
 router.get('/:id', clientesController.getClienteById);
 router.post('/', clientesController.createCliente);
+router.post('/validate-contract', clientesController.validateContractNumber);
 router.put('/:id', clientesController.updateCliente);
 router.delete('/:id', clientesController.deleteCliente);
 
