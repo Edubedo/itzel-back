@@ -19,7 +19,7 @@ const RelacionAsesoresSucursalesModel = ConnectionDatabase.define('RelacionAseso
     },
     ck_sucursal: {
         type: DataTypes.CHAR(36),
-        allowNull: true
+        allowNull: false
     },
 }, {
     tableName: 'relacion_asesores_sucursales',

@@ -234,6 +234,7 @@ const createSucursal = async (req, res) => {
 // Actualizar sucursal
 const updateSucursal = async (req, res) => {
   try {
+    console.log('=== INICIANDO ACTUALIZACIÓN DE SUCURSAL ===');
     const { id } = req.params;
     const {
       s_nombre_sucursal,
@@ -245,16 +246,25 @@ const updateSucursal = async (req, res) => {
       asesores = []
     } = req.body;
 
+    console.log('ID de sucursal:', id);
+    console.log('Datos recibidos:', { s_nombre_sucursal, s_domicilio, ck_municipio, s_telefono, s_codigo_postal });
+    console.log('Ejecutivos:', ejecutivos);
+    console.log('Asesores:', asesores);
+
     const sucursal = await Sucursal.findByPk(id);
 
     if (!sucursal) {
+      console.log('Sucursal no encontrada');
       return res.status(404).json({
         success: false,
         message: 'Sucursal no encontrada'
       });
     }
 
+    console.log('Sucursal encontrada:', sucursal.toJSON());
+
     // Actualizar datos de la sucursal
+    console.log('Actualizando datos de la sucursal...');
     await sucursal.update({
       s_nombre_sucursal,
       s_domicilio,
@@ -263,42 +273,67 @@ const updateSucursal = async (req, res) => {
       s_codigo_postal
     });
 
+    console.log('Datos de sucursal actualizados');
+
     // Actualizar relaciones con ejecutivos
-    // Primero eliminar las relaciones existentes
-    await RelacionEjecutivosSucursalesModel.update(
-      { ck_estatus: 'INACTIVO' },
-      { where: { ck_sucursal: id } }
-    );
+    console.log('Actualizando relaciones con ejecutivos...');
+    try {
+      // Primero eliminar las relaciones existentes
+      await RelacionEjecutivosSucursalesModel.update(
+        { ck_estatus: 'INACTIVO' },
+        { where: { ck_sucursal: id } }
+      );
 
-    // Crear nuevas relaciones
-    if (ejecutivos && ejecutivos.length > 0) {
-      const relacionesEjecutivos = ejecutivos.map(ejecutivo => ({
-        ck_usuario: ejecutivo.ck_usuario,
-        ck_sucursal: id,
-        ck_area: ejecutivo.ck_area || null,
-        ck_servicio: ejecutivo.ck_servicio || null,
-        ck_estatus: 'ACTIVO'
-      }));
+      console.log('Relaciones de ejecutivos marcadas como inactivas');
 
-      await RelacionEjecutivosSucursalesModel.bulkCreate(relacionesEjecutivos);
+      // Crear nuevas relaciones
+      if (ejecutivos && ejecutivos.length > 0) {
+        console.log('Creando nuevas relaciones de ejecutivos...');
+        const relacionesEjecutivos = ejecutivos.map(ejecutivo => ({
+          ck_usuario: ejecutivo.ck_usuario,
+          ck_sucursal: id,
+          ck_area: ejecutivo.ck_area || null,
+          ck_servicio: ejecutivo.ck_servicio || null,
+          ck_estatus: 'ACTIVO'
+        }));
+
+        console.log('Relaciones de ejecutivos a crear:', relacionesEjecutivos);
+        await RelacionEjecutivosSucursalesModel.bulkCreate(relacionesEjecutivos);
+        console.log('Relaciones de ejecutivos creadas');
+      }
+    } catch (error) {
+      console.error('Error al actualizar relaciones de ejecutivos:', error);
+      // Continuar con el proceso aunque falle esta parte
     }
 
     // Actualizar relaciones con asesores
-    await RelacionAsesoresSucursalesModel.update(
-      { ck_estatus: 'INACTIVO' },
-      { where: { ck_sucursal: id } }
-    );
+    console.log('Actualizando relaciones con asesores...');
+    try {
+      await RelacionAsesoresSucursalesModel.update(
+        { ck_estatus: 'INACTIVO' },
+        { where: { ck_sucursal: id } }
+      );
 
-    if (asesores && asesores.length > 0) {
-      const relacionesAsesores = asesores.map(asesor => ({
-        ck_usuario: asesor.ck_usuario,
-        ck_sucursal: id,
-        ck_estatus: 'ACTIVO'
-      }));
+      console.log('Relaciones de asesores marcadas como inactivas');
 
-      await RelacionAsesoresSucursalesModel.bulkCreate(relacionesAsesores);
+      if (asesores && asesores.length > 0) {
+        console.log('Creando nuevas relaciones de asesores...');
+        const relacionesAsesores = asesores.map(asesor => ({
+          ck_usuario: asesor.ck_usuario,
+          ck_sucursal: id,
+          ck_estatus: 'ACTIVO'
+        }));
+
+        console.log('Relaciones de asesores a crear:', relacionesAsesores);
+        await RelacionAsesoresSucursalesModel.bulkCreate(relacionesAsesores);
+        console.log('Relaciones de asesores creadas');
+      }
+    } catch (error) {
+      console.error('Error al actualizar relaciones de asesores:', error);
+      // Continuar con el proceso aunque falle esta parte
     }
 
+    console.log('=== ACTUALIZACIÓN COMPLETADA ===');
     res.json({ 
       success: true,
       message: 'Sucursal actualizada exitosamente',
@@ -306,9 +341,11 @@ const updateSucursal = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al actualizar sucursal:', error);
+    console.error('Stack trace:', error.stack);
     res.status(500).json({
       success: false,
-      message: 'Error al actualizar la sucursal'
+      message: 'Error al actualizar la sucursal',
+      error: error.message
     });
   }
 };
