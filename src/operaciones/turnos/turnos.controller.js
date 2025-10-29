@@ -501,6 +501,7 @@ const getEstadisticasTurnos = async (req, res) => {
         SUM(CASE WHEN ck_estatus = 'ACTIVO' THEN 1 ELSE 0 END) as turnos_pendientes,
         SUM(CASE WHEN ck_estatus = 'PROCES' THEN 1 ELSE 0 END) as turnos_en_proceso,
         SUM(CASE WHEN ck_estatus = 'ATENDI' THEN 1 ELSE 0 END) as turnos_atendidos,
+        SUM(CASE WHEN ck_estatus = 'CANCEL' THEN 1 ELSE 0 END) as turnos_cancelados,
         AVG(CASE 
           WHEN ck_estatus = 'ATENDI' AND t_tiempo_atendido IS NOT NULL 
           THEN EXTRACT(EPOCH FROM (t_tiempo_atendido - t_tiempo_espera)) / 60
