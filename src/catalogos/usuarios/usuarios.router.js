@@ -7,11 +7,15 @@ const {
     updateUsuario, 
     deleteUsuario, 
     getUsuariosStats,
+    verifyEmail,
     upload 
 } = require("./usuarios.controller");
 const authMiddleware = require("../../../middlewares/authMiddleware");
 
-// Aplicar middleware de autenticación a todas las rutas
+// Ruta pública de verificación de email (NO requiere autenticación)
+router.get("/verify-email", verifyEmail);
+
+// Aplicar middleware de autenticación a todas las rutas siguientes
 router.use(authMiddleware);
 
 // Rutas para usuarios
