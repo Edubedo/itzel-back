@@ -113,3 +113,44 @@ exports.getEstadisticasTurnosMensuales = async (req, res) => {
 
 
 };
+
+
+// Turnos del día agrupados por área
+exports.getTurnosPorAreaHoy = async (req, res) => {
+  try {
+    const rows = await ConnectionDatabase.query(
+      `
+      SELECT 
+        ca.s_area AS area,
+        COUNT(ot.ck_turno) AS total_turnos
+      FROM catalogo_area ca
+      LEFT JOIN operacion_turnos ot 
+        ON ca.ck_area = ot.ck_area 
+        AND DATE(ot.d_fecha_creacion) = CURRENT_DATE
+      GROUP BY ca.s_area
+      ORDER BY ca.s_area ASC
+      `,
+      { type: QueryTypes.SELECT }
+    );
+
+    const labels = rows.map(r => r.area);
+    const data = rows.map(r => parseInt(r.total_turnos, 10));
+
+    res.json({
+      success: true,
+      data: {
+        labels,
+        series: [
+          {
+            name: "Turnos Emitidos Hoy",
+            data,
+          },
+        ],
+      },
+    });
+  } catch (err) {
+    console.error("Error en getTurnosPorAreaHoy:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
