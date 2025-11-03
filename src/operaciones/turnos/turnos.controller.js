@@ -129,6 +129,112 @@ const getAreasPorSucursal = async (req, res) => {
   }
 };
 
+// Obtener áreas por usuario autenticado y sucursal
+// Ejecutivo: solo áreas donde tiene relación
+// Asesor: todas las áreas de su sucursal asignada
+// Administrador: todas las áreas de la sucursal seleccionada
+const getAreasPorUsuario = async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'No autenticado' });
+    }
+
+    const { sucursalId } = req.params;
+    if (!sucursalId) {
+      return res.status(400).json({ success: false, message: 'Sucursal requerida' });
+    }
+
+    const tipoUsuario = user.tipo_usuario;
+
+    let areas = [];
+
+    if (tipoUsuario === 1) {
+      // Administrador: todas las áreas de la sucursal
+      areas = await CatalogoAreasModel.findAll({
+        where: { 
+          ck_sucursal: sucursalId,
+          ck_estatus: 'ACTIVO'
+        },
+        order: [['s_area', 'ASC']]
+      });
+    } else if (tipoUsuario === 2) {
+      // Ejecutivo: solo áreas donde tiene relación
+      const relaciones = await RelacionEjecutivosSucursalesModel.findAll({
+        where: { 
+          ck_usuario: user.uk_usuario,
+          ck_sucursal: sucursalId,
+          ck_estatus: 'ACTIVO'
+        },
+        attributes: ['ck_area']
+      });
+
+      const areaIds = [...new Set(relaciones.map(r => r.ck_area).filter(Boolean))];
+      
+      if (areaIds.length > 0) {
+        areas = await CatalogoAreasModel.findAll({
+          where: { 
+            ck_area: areaIds,
+            ck_estatus: 'ACTIVO'
+          },
+          order: [['s_area', 'ASC']]
+        });
+      }
+    } else if (tipoUsuario === 4) {
+      // Asesor: todas las áreas de la sucursal asignada
+      const relacion = await RelacionAsesoresSucursalesModel.findOne({
+        where: { 
+          ck_usuario: user.uk_usuario,
+          ck_sucursal: sucursalId,
+          ck_estatus: 'ACTIVO'
+        }
+      });
+
+      if (relacion) {
+        areas = await CatalogoAreasModel.findAll({
+          where: { 
+            ck_sucursal: sucursalId,
+            ck_estatus: 'ACTIVO'
+          },
+          order: [['s_area', 'ASC']]
+        });
+      }
+    }
+
+    // Obtener contadores de turnos pendientes por área
+    const areasConContadores = await Promise.all(
+      areas.map(async (area) => {
+        const contador = await ConnectionDatabase.query(`
+          SELECT COUNT(*) as pendientes
+          FROM operacion_turnos
+          WHERE ck_area = :areaId
+            AND ck_sucursal = :sucursalId
+            AND ck_estatus = 'ACTIVO'
+            AND (ck_usuario_atendiendo IS NULL OR ck_usuario_atendiendo = :userId)
+            AND DATE(d_fecha_creacion) = CURRENT_DATE
+        `, {
+          replacements: { 
+            areaId: area.ck_area,
+            sucursalId: sucursalId,
+            userId: user.uk_usuario
+          },
+          type: QueryTypes.SELECT,
+        });
+
+        return {
+          ...area.toJSON(),
+          turnos_pendientes: parseInt(contador[0]?.pendientes || 0)
+        };
+      })
+    );
+
+    res.json({ success: true, areas: areasConContadores });
+  } catch (error) {
+    console.error('Error al obtener áreas por usuario:', error);
+    res.status(500).json({ success: false, message: 'Error al obtener áreas' });
+  }
+};
+
 // Sucursales accesibles por usuario autenticado y rol
 // Admin: todas; Ejecutivo: sucursales de RelacionEjecutivosSucursales; Asesor: de RelacionAsesoresSucursales
 const getSucursalesPorUsuario = async (req, res) => {
@@ -340,27 +446,107 @@ const crearTurno = async (req, res) => {
   }
 };
 
-// Obtener todos los turnos con filtros
+// Obtener todos los turnos con filtros basados en permisos de usuario
 const getTurnos = async (req, res) => {
   try {
+    const user = req.user;
     let whereConditions = [];
     const { sucursalId, areaId, estatus } = req.query;
     
     let replacements = {};
+    let areasPermitidas = [];
+
+    // Filtrar por áreas según tipo de usuario
+    if (user) {
+      const tipoUsuario = user.tipo_usuario;
+
+      if (tipoUsuario === 1) {
+        // Administrador: puede ver todas las áreas si no se especifica areaId
+        if (!areaId && sucursalId) {
+          const todasAreas = await CatalogoAreasModel.findAll({
+            where: { 
+              ck_sucursal: sucursalId,
+              ck_estatus: 'ACTIVO'
+            },
+            attributes: ['ck_area']
+          });
+          areasPermitidas = todasAreas.map(a => a.ck_area);
+        }
+      } else if (tipoUsuario === 2) {
+        // Ejecutivo: solo áreas donde tiene relación
+        if (sucursalId) {
+          const relaciones = await RelacionEjecutivosSucursalesModel.findAll({
+            where: { 
+              ck_usuario: user.uk_usuario,
+              ck_sucursal: sucursalId,
+              ck_estatus: 'ACTIVO'
+            },
+            attributes: ['ck_area']
+          });
+          areasPermitidas = [...new Set(relaciones.map(r => r.ck_area).filter(Boolean))];
+        }
+      } else if (tipoUsuario === 4) {
+        // Asesor: todas las áreas de su sucursal
+        if (sucursalId) {
+          const relacion = await RelacionAsesoresSucursalesModel.findOne({
+            where: { 
+              ck_usuario: user.uk_usuario,
+              ck_sucursal: sucursalId,
+              ck_estatus: 'ACTIVO'
+            }
+          });
+          if (relacion) {
+            const todasAreas = await CatalogoAreasModel.findAll({
+              where: { 
+                ck_sucursal: sucursalId,
+                ck_estatus: 'ACTIVO'
+              },
+              attributes: ['ck_area']
+            });
+            areasPermitidas = todasAreas.map(a => a.ck_area);
+          }
+        }
+      }
+
+      // Si hay áreas permitidas, filtrar por ellas
+      if (areasPermitidas.length > 0) {
+        if (areaId && areasPermitidas.includes(areaId)) {
+          // Si se especifica un areaId y está permitida, usar solo esa
+          whereConditions.push('ot.ck_area = :areaId');
+          replacements.areaId = areaId;
+        } else if (!areaId) {
+          // Si no se especifica areaId, usar todas las permitidas
+          // Crear placeholders dinámicos para el IN clause
+          const areaPlaceholders = areasPermitidas.map((_, index) => `:area${index}`).join(', ');
+          whereConditions.push(`ot.ck_area IN (${areaPlaceholders})`);
+          areasPermitidas.forEach((areaId, index) => {
+            replacements[`area${index}`] = areaId;
+          });
+        } else {
+          // Si se especifica un areaId pero no está permitida, devolver vacío
+          return res.json({ success: true, turnos: [] });
+        }
+      } else if (tipoUsuario !== 1) {
+        // Si no hay áreas permitidas y no es admin, devolver vacío
+        return res.json({ success: true, turnos: [] });
+      }
+    }
 
     if (sucursalId) {
       whereConditions.push('ot.ck_sucursal = :sucursalId');
       replacements.sucursalId = sucursalId;
     }
 
-    if (areaId) {
-      whereConditions.push('ot.ck_area = :areaId');
-      replacements.areaId = areaId;
-    }
-
     if (estatus) {
       whereConditions.push('ot.ck_estatus = :estatus');
       replacements.estatus = estatus;
+    }
+
+    // Filtrar turnos: mostrar solo los que NO están asignados a otros usuarios
+    // O los que están asignados al usuario actual
+    if (user) {
+      whereConditions.push(`(ot.ck_usuario_atendiendo IS NULL OR ot.ck_usuario_atendiendo = :userIdActual)`);
+      replacements.userIdActual = user.uk_usuario;
     }
 
     const whereClause = whereConditions.length > 0 ? 
@@ -387,14 +573,17 @@ const getTurnos = async (req, res) => {
         ot.t_tiempo_atendido,
         ot.d_fecha_atendido,
         ot.ck_usuario_atendio,
+        ot.ck_usuario_atendiendo,
         cs.s_servicio,
-        cu.s_nombre as nombre_asesor
+        cu.s_nombre as nombre_asesor,
+        cu_atendiendo.s_nombre as nombre_usuario_atendiendo
       FROM operacion_turnos ot
       LEFT JOIN catalogo_area ca ON ca.ck_area = ot.ck_area
       LEFT JOIN catalogo_clientes cc ON cc.ck_cliente = ot.ck_cliente
       LEFT JOIN catalogo_sucursales su ON su.ck_sucursal = ot.ck_sucursal
       LEFT JOIN catalogo_servicios cs ON cs.ck_servicio = ot.ck_servicio
       LEFT JOIN configuracion_usuarios cu ON cu.ck_usuario = ot.ck_usuario_atendio
+      LEFT JOIN configuracion_usuarios cu_atendiendo ON cu_atendiendo.ck_usuario = ot.ck_usuario_atendiendo
       WHERE ot.ck_estatus != 'ATENDI'
         AND DATE(ot.d_fecha_creacion) = CURRENT_DATE
       ${whereClause}
@@ -415,7 +604,15 @@ const getTurnos = async (req, res) => {
 const atenderTurno = async (req, res) => {
   try {
     const { turnoId } = req.params;
+    const user = req.user;
     const { ck_usuario_atendio } = req.body;
+
+    if (!user) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'No autenticado' 
+      });
+    }
 
     const turno = await OperacionTurnosModel.findByPk(turnoId);
     if (!turno) {
@@ -432,9 +629,18 @@ const atenderTurno = async (req, res) => {
       });
     }
 
+    // Verificar que el turno no esté asignado a otro usuario
+    if (turno.ck_usuario_atendiendo && turno.ck_usuario_atendiendo !== user.uk_usuario) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Este turno ya está siendo atendido por otro empleado' 
+      });
+    }
+
     turno.ck_estatus = 'PROCES';
     turno.d_fecha_atendido = new Date();
-    turno.ck_usuario_atendio = ck_usuario_atendio;
+    turno.ck_usuario_atendio = ck_usuario_atendio || user.uk_usuario;
+    turno.ck_usuario_atendiendo = user.uk_usuario; // Asignar al usuario que está atendiendo
     
     await turno.save();
 
@@ -456,6 +662,7 @@ const atenderTurno = async (req, res) => {
 const finalizarTurno = async (req, res) => {
   try {
     const { turnoId } = req.params;
+    const user = req.user;
 
     const turno = await OperacionTurnosModel.findByPk(turnoId);
     if (!turno) {
@@ -465,7 +672,28 @@ const finalizarTurno = async (req, res) => {
       });
     }
 
+    // Verificar que el usuario que finaliza sea el que está atendiendo
+    if (user && turno.ck_usuario_atendiendo && turno.ck_usuario_atendiendo !== user.uk_usuario) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'No tiene permiso para finalizar este turno' 
+      });
+    }
+
+    // Calcular tiempo de atención
+    if (turno.d_fecha_atendido) {
+      const tiempoInicio = new Date(turno.d_fecha_atendido);
+      const tiempoFin = new Date();
+      const diffMs = tiempoFin - tiempoInicio;
+      const horas = Math.floor(diffMs / 3600000);
+      const minutos = Math.floor((diffMs % 3600000) / 60000);
+      const segundos = Math.floor((diffMs % 60000) / 1000);
+      turno.t_tiempo_atendido = `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
+    }
+
     turno.ck_estatus = 'ATENDI';
+    turno.ck_usuario_atendiendo = null; // Limpiar el campo cuando se finaliza
+    
     await turno.save();
 
     res.json({ 
@@ -700,10 +928,94 @@ const cancelarTurno = async (req, res) => {
     });
   }
 };
+// Obtener contador de turnos pendientes por área
+const getTurnosPorArea = async (req, res) => {
+  try {
+    const user = req.user;
+    const { sucursalId } = req.params;
+
+    if (!user || !sucursalId) {
+      return res.status(400).json({ success: false, message: 'Usuario y sucursal requeridos' });
+    }
+
+    const tipoUsuario = user.tipo_usuario;
+    let areasIds = [];
+
+    if (tipoUsuario === 1) {
+      // Admin: todas las áreas
+      const areas = await CatalogoAreasModel.findAll({
+        where: { ck_sucursal: sucursalId, ck_estatus: 'ACTIVO' },
+        attributes: ['ck_area']
+      });
+      areasIds = areas.map(a => a.ck_area);
+    } else if (tipoUsuario === 2) {
+      // Ejecutivo: solo sus áreas
+      const relaciones = await RelacionEjecutivosSucursalesModel.findAll({
+        where: { 
+          ck_usuario: user.uk_usuario,
+          ck_sucursal: sucursalId,
+          ck_estatus: 'ACTIVO'
+        },
+        attributes: ['ck_area']
+      });
+      areasIds = [...new Set(relaciones.map(r => r.ck_area).filter(Boolean))];
+    } else if (tipoUsuario === 4) {
+      // Asesor: todas las áreas de su sucursal
+      const relacion = await RelacionAsesoresSucursalesModel.findOne({
+        where: { 
+          ck_usuario: user.uk_usuario,
+          ck_sucursal: sucursalId,
+          ck_estatus: 'ACTIVO'
+        }
+      });
+      if (relacion) {
+        const areas = await CatalogoAreasModel.findAll({
+          where: { ck_sucursal: sucursalId, ck_estatus: 'ACTIVO' },
+          attributes: ['ck_area']
+        });
+        areasIds = areas.map(a => a.ck_area);
+      }
+    }
+
+    if (areasIds.length === 0) {
+      return res.json({ success: true, contadores: [] });
+    }
+
+    const contadores = await ConnectionDatabase.query(`
+      SELECT 
+        ca.ck_area,
+        ca.s_area,
+        COUNT(CASE WHEN ot.ck_estatus = 'ACTIVO' AND (ot.ck_usuario_atendiendo IS NULL OR ot.ck_usuario_atendiendo = :userId) THEN 1 END) as pendientes,
+        COUNT(CASE WHEN ot.ck_estatus = 'PROCES' AND ot.ck_usuario_atendiendo = :userId THEN 1 END) as en_atencion
+      FROM catalogo_area ca
+      LEFT JOIN operacion_turnos ot ON ot.ck_area = ca.ck_area
+        AND ot.ck_sucursal = :sucursalId
+        AND DATE(ot.d_fecha_creacion) = CURRENT_DATE
+      WHERE ca.ck_area IN (:areasIds)
+        AND ca.ck_estatus = 'ACTIVO'
+      GROUP BY ca.ck_area, ca.s_area
+      ORDER BY ca.s_area ASC
+    `, {
+      replacements: { 
+        areasIds: areasIds,
+        sucursalId: sucursalId,
+        userId: user.uk_usuario
+      },
+      type: QueryTypes.SELECT,
+    });
+
+    res.json({ success: true, contadores });
+  } catch (error) {
+    console.error('Error al obtener contadores por área:', error);
+    res.status(500).json({ success: false, message: 'Error al obtener contadores' });
+  }
+};
+
 module.exports = {
   getSucursales,
   getSucursalesPorUsuario,
   getAreasPorSucursal,
+  getAreasPorUsuario,
   getServiciosPorArea,
   crearTurno,
   getTurnos,
@@ -713,6 +1025,7 @@ module.exports = {
   descargarTicketPDF,
   notificaciones,
   marcarLeida,
-  cancelarTurno
+  cancelarTurno,
+  getTurnosPorArea
 };
   

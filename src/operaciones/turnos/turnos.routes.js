@@ -6,6 +6,7 @@ const {
   getSucursales,
   getSucursalesPorUsuario,
   getAreasPorSucursal,
+  getAreasPorUsuario,
   getServiciosPorArea,
   crearTurno,
   getTurnos, 
@@ -15,7 +16,8 @@ const {
   descargarTicketPDF,
   notificaciones,
   marcarLeida,
-  cancelarTurno
+  cancelarTurno,
+  getTurnosPorArea
 } = require("./turnos.controller");
 const authMiddleware = require("../../../middlewares/authMiddleware");
 
@@ -28,13 +30,15 @@ router.get('/sucursales', getSucursales);
 // Sucursales filtradas por usuario autenticado y rol
 router.get('/sucursales-usuario', authMiddleware, getSucursalesPorUsuario);
 router.get('/areas/:sucursalId', getAreasPorSucursal);
+router.get('/areas-usuario/:sucursalId', authMiddleware, getAreasPorUsuario);
+router.get('/turnos-por-area/:sucursalId', authMiddleware, getTurnosPorArea);
 router.get('/servicios/:areaId', getServiciosPorArea);
 
 // Rutas para turnos
-router.get('/obtenerTurnos', getTurnos);
+router.get('/obtenerTurnos', authMiddleware, getTurnos);
 router.post('/crear', crearTurno);
-router.put('/atender/:turnoId', atenderTurno);
-router.put('/finalizar/:turnoId', finalizarTurno);
+router.put('/atender/:turnoId', authMiddleware, atenderTurno);
+router.put('/finalizar/:turnoId', authMiddleware, finalizarTurno);
 router.delete('/cancelar/:id', cancelarTurno);
 
 // Ruta para descargar ticket PDF

@@ -53,6 +53,10 @@ const OperacionTurnosModel = ConnectionDatabase.define('OperacionTurnosModel', {
         type: DataTypes.CHAR(36),
         allowNull: true
     },
+    ck_usuario_atendiendo: {
+        type: DataTypes.CHAR(36),
+        allowNull: true
+    },
     d_fecha_creacion: {
         type: DataTypes.DATE,
         allowNull: true,
