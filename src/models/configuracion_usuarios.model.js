@@ -73,6 +73,15 @@ const ConfiguracionUsuariosModel = ConnectionDatabase.define('ConfiguracionUsuar
     reset_code_expires: {
         type: DataTypes.DATE,
         allowNull: true
+    },
+    // Campos para verificación de correo electrónico
+    verification_token: {
+        type: DataTypes.STRING(64),
+        allowNull: true
+    },
+    verification_token_expires: {
+        type: DataTypes.DATE,
+        allowNull: true
     }
 
 }, {

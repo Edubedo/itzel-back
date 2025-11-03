@@ -4,6 +4,8 @@ const { Op } = require("sequelize");
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
+const { sendVerificationEmail } = require('../../utils/emailService');
 
 const SALT_ROUNDS = 10;
 
@@ -218,6 +220,13 @@ const createUsuario = async (req, res) => {
         // Encriptar contraseña
         const hashedPassword = await bcrypt.hash(s_password, SALT_ROUNDS);
 
+        // Generar token de verificación único (64 caracteres)
+        const verificationToken = crypto.randomBytes(32).toString('hex');
+        
+        // Token expira en 24 horas
+        const verificationTokenExpires = new Date();
+        verificationTokenExpires.setHours(verificationTokenExpires.getHours() + 24);
+
         // Manejar imagen si existe
         let s_foto = null;
         if (req.file) {
@@ -237,16 +246,32 @@ const createUsuario = async (req, res) => {
             s_rfc,
             s_curp,
             s_domicilio,
+            ck_estatus: 'PENDIE', // Usuario pendiente de verificación
+            verification_token: verificationToken,
+            verification_token_expires: verificationTokenExpires,
             ck_sistema: '00000000-0000-0000-0000-000000000000'
         });
 
+        // Enviar correo de verificación
+        const emailResult = await sendVerificationEmail(
+            s_correo_electronico,
+            s_nombre,
+            verificationToken
+        );
+
+        if (!emailResult.success) {
+            console.error('Error al enviar email de verificación:', emailResult.error);
+            // No fallar la creación del usuario, pero notificar
+        }
+
         res.status(201).json({
             success: true,
-            message: 'Usuario creado exitosamente',
+            message: 'Usuario creado exitosamente. Por favor, verifica tu correo electrónico para activar tu cuenta.',
             data: {
                 ck_usuario: newUsuario.ck_usuario,
                 s_nombre: newUsuario.s_nombre,
-                s_correo_electronico: newUsuario.s_correo_electronico
+                s_correo_electronico: newUsuario.s_correo_electronico,
+                requiresVerification: true
             }
         });
 
@@ -423,6 +448,82 @@ const getUsuariosStats = async (req, res) => {
     }
 };
 
+// Verificar correo electrónico con token
+const verifyEmail = async (req, res) => {
+    try {
+        const { token } = req.query;
+
+        if (!token) {
+            return res.status(400).json({
+                success: false,
+                message: 'Token de verificación no proporcionado'
+            });
+        }
+
+        // Buscar usuario con el token de verificación
+        const usuario = await ConfiguracionUsuariosModel.findOne({
+            where: { 
+                verification_token: token
+            }
+        });
+
+        if (!usuario) {
+            return res.status(404).json({
+                success: false,
+                message: 'Token de verificación inválido'
+            });
+        }
+
+        // Verificar si el token ha expirado
+        if (usuario.verification_token_expires && new Date() > new Date(usuario.verification_token_expires)) {
+            return res.status(400).json({
+                success: false,
+                message: 'El token de verificación ha expirado. Por favor, solicita un nuevo correo de verificación.'
+            });
+        }
+
+        // Verificar si ya está verificado
+        if (usuario.ck_estatus.trim() === 'ACTIVO') {
+            return res.status(200).json({
+                success: true,
+                message: 'Este correo electrónico ya ha sido verificado anteriormente.',
+                alreadyVerified: true
+            });
+        }
+
+        // Actualizar usuario a ACTIVO y limpiar token
+        await ConfiguracionUsuariosModel.update(
+            {
+                ck_estatus: 'ACTIVO',
+                verification_token: null,
+                verification_token_expires: null
+            },
+            {
+                where: { ck_usuario: usuario.ck_usuario }
+            }
+        );
+
+        console.log(`✓ Usuario verificado: ${usuario.s_correo_electronico}`);
+
+        res.status(200).json({
+            success: true,
+            message: '¡Correo electrónico verificado exitosamente! Tu cuenta ha sido activada.',
+            data: {
+                s_nombre: usuario.s_nombre,
+                s_correo_electronico: usuario.s_correo_electronico
+            }
+        });
+
+    } catch (error) {
+        console.error('Error al verificar correo:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     getAllUsuarios,
     getUsuarioById,
@@ -430,5 +531,6 @@ module.exports = {
     updateUsuario,
     deleteUsuario,
     getUsuariosStats,
+    verifyEmail,
     upload
 }; 
