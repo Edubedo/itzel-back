@@ -3,6 +3,9 @@ const RelacionEjecutivosSucursalesModel = require('../../models/relacion_ejecuti
 const RelacionAsesoresSucursalesModel = require('../../models/relacion_asesores_sucursales.model');
 const CatalogoEstadosModel = require('../../models/estados.model');
 const CatalogoMunicipiosModel = require('../../models/municipios.model');
+const ConfiguracionUsuariosModel = require('../../models/configuracion_usuarios.model');
+const CatalogoAreasModel = require('../../models/areas.model');
+const CatalogoServiciosModel = require('../../models/servicios.model');
 
 // Obtener todos los estados
 const getAllEstados = async (req, res) => {
@@ -137,6 +140,81 @@ const getSucursalById = async (req, res) => {
       });
     }
 
+    // Obtener ejecutivos asignados con sus detalles
+    const relacionesEjecutivos = await RelacionEjecutivosSucursalesModel.findAll({
+      where: { 
+        ck_sucursal: id,
+        ck_estatus: 'ACTIVO'
+      }
+    });
+
+    const ejecutivosConDetalles = await Promise.all(
+      relacionesEjecutivos.map(async (relacion) => {
+        const usuario = await ConfiguracionUsuariosModel.findByPk(relacion.ck_usuario, {
+          attributes: ['ck_usuario', 's_nombre', 's_apellido_paterno', 's_apellido_materno', 's_correo_electronico']
+        });
+        
+        let areaNombre = null;
+        let servicioNombre = null;
+        
+        if (relacion.ck_area) {
+          const area = await CatalogoAreasModel.findByPk(relacion.ck_area, {
+            attributes: ['s_area']
+          });
+          areaNombre = area ? area.s_area : null;
+        }
+        
+        if (relacion.ck_servicio) {
+          const servicio = await CatalogoServiciosModel.findByPk(relacion.ck_servicio, {
+            attributes: ['s_servicio']
+          });
+          servicioNombre = servicio ? servicio.s_servicio : null;
+        }
+
+        return {
+          ck_usuario: relacion.ck_usuario,
+          ck_area: relacion.ck_area,
+          ck_servicio: relacion.ck_servicio,
+          usuario: usuario ? {
+            ck_usuario: usuario.ck_usuario,
+            s_nombre: usuario.s_nombre,
+            s_apellido_paterno: usuario.s_apellido_paterno,
+            s_apellido_materno: usuario.s_apellido_materno,
+            s_correo_electronico: usuario.s_correo_electronico
+          } : null,
+          areaNombre,
+          servicioNombre
+        };
+      })
+    );
+
+    // Obtener asesores asignados con sus detalles
+    const relacionesAsesores = await RelacionAsesoresSucursalesModel.findAll({
+      where: { 
+        ck_sucursal: id,
+        ck_estatus: 'ACTIVO'
+      }
+    });
+
+    const asesoresConDetalles = await Promise.all(
+      relacionesAsesores.map(async (relacion) => {
+        const usuario = await ConfiguracionUsuariosModel.findByPk(relacion.ck_usuario, {
+          attributes: ['ck_usuario', 's_nombre', 's_apellido_paterno', 's_apellido_materno', 's_correo_electronico']
+        });
+
+        return {
+          ck_usuario: relacion.ck_usuario,
+          usuario: usuario ? {
+            ck_usuario: usuario.ck_usuario,
+            s_nombre: usuario.s_nombre,
+            s_apellido_paterno: usuario.s_apellido_paterno,
+            s_apellido_materno: usuario.s_apellido_materno,
+            s_correo_electronico: usuario.s_correo_electronico
+          } : null
+        };
+      })
+    );
+
     // Limpiar espacios en blanco del campo ck_estatus
     const sucursalData = sucursal.toJSON();
     if (sucursalData.ck_estatus) {
@@ -145,7 +223,11 @@ const getSucursalById = async (req, res) => {
 
     res.json({
       success: true,
-      sucursal: sucursalData
+      sucursal: {
+        ...sucursalData,
+        ejecutivos: ejecutivosConDetalles,
+        asesores: asesoresConDetalles
+      }
     });
   } catch (error) {
     console.error('Error al obtener sucursal:', error);
