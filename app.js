@@ -16,14 +16,32 @@ const app = express();
 
 
 
-// Configuración de CORS CORRECTA para desarrollo
+// Configuración de CORS para desarrollo y producción
+const allowedOrigins = [
+    'http://localhost:5173', // Frontend local
+    'http://127.0.0.1:5173', // Frontend local alternativo
+    'https://www.sistemaitzel.site', // Frontend producción
+    'https://sistemaitzel.site' // Frontend producción sin www
+];
+
 app.use(cors({
     origin: function (origin, callback) {
-        // Permitir requests desde el frontend y sin origin (Postman, etc.)
-        if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        // Permitir requests sin origin (Postman, mobile apps, etc.)
+        if (!origin) {
+            callback(null, true);
+            return;
+        }
+        
+        // Permitir si está en la lista de orígenes permitidos
+        if (allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
-            callback(null, true); // En desarrollo permitir todo
+            // En desarrollo, permitir localhost
+            if (process.env.NODE_ENV !== 'production' && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+                callback(null, true);
+            } else {
+                callback(new Error('No permitido por CORS'));
+            }
         }
     },
     credentials: true, // IMPORTANTE: Permitir cookies y credenciales
@@ -66,7 +84,8 @@ process.on('unhandledRejection', (reason, promise) => {
 const port = process.env.PORT || 3001;
 app.listen(port, () => {
     console.log(`🚀 Servidor ejecutándose en puerto ${port}`);
-    console.log(`📡 CORS configurado correctamente para desarrollo`);
+    console.log(`📡 CORS configurado para desarrollo y producción`);
+    console.log(`🌐 Entorno: ${process.env.NODE_ENV || 'development'}`);
 });
 
 const serviciosRouter = require("./src/catalogos/servicios/servicios.router");
