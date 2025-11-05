@@ -453,6 +453,11 @@ const getTurnos = async (req, res) => {
     let whereConditions = [];
     const { sucursalId, areaId, estatus } = req.query;
     
+    // Normalizar areaId - si está vacío o undefined, tratarlo como null
+    const areaIdNormalizado = areaId && areaId.trim() !== '' ? areaId.trim() : null;
+    console.log('🔍 [getTurnos] areaId recibido:', areaId, 'normalizado:', areaIdNormalizado);
+    console.log('🔍 [getTurnos] sucursalId:', sucursalId, 'tipoUsuario:', user?.tipo_usuario);
+    
     let replacements = {};
     let areasPermitidas = [];
 
@@ -461,8 +466,8 @@ const getTurnos = async (req, res) => {
       const tipoUsuario = user.tipo_usuario;
 
       if (tipoUsuario === 1) {
-        // Administrador: puede ver todas las áreas si no se especifica areaId
-        if (!areaId && sucursalId) {
+        // Administrador: puede ver todas las áreas
+        if (sucursalId) {
           const todasAreas = await CatalogoAreasModel.findAll({
             where: { 
               ck_sucursal: sucursalId,
@@ -509,13 +514,16 @@ const getTurnos = async (req, res) => {
       }
 
       // Si hay áreas permitidas, filtrar por ellas
+      console.log('📋 [getTurnos] areasPermitidas:', areasPermitidas.length, 'áreas');
       if (areasPermitidas.length > 0) {
-        if (areaId && areasPermitidas.includes(areaId)) {
+        if (areaIdNormalizado && areasPermitidas.includes(areaIdNormalizado)) {
           // Si se especifica un areaId y está permitida, usar solo esa
+          console.log('✅ [getTurnos] Aplicando filtro por área específica:', areaIdNormalizado);
           whereConditions.push('ot.ck_area = :areaId');
-          replacements.areaId = areaId;
-        } else if (!areaId) {
+          replacements.areaId = areaIdNormalizado;
+        } else if (!areaIdNormalizado) {
           // Si no se especifica areaId, usar todas las permitidas
+          console.log('📋 [getTurnos] Mostrando todas las áreas permitidas:', areasPermitidas.length);
           // Crear placeholders dinámicos para el IN clause
           const areaPlaceholders = areasPermitidas.map((_, index) => `:area${index}`).join(', ');
           whereConditions.push(`ot.ck_area IN (${areaPlaceholders})`);
@@ -524,11 +532,15 @@ const getTurnos = async (req, res) => {
           });
         } else {
           // Si se especifica un areaId pero no está permitida, devolver vacío
+          console.log('❌ [getTurnos] Área no permitida:', areaIdNormalizado);
           return res.json({ success: true, turnos: [] });
         }
       } else if (tipoUsuario !== 1) {
         // Si no hay áreas permitidas y no es admin, devolver vacío
+        console.log('⚠️ [getTurnos] No hay áreas permitidas para usuario no admin');
         return res.json({ success: true, turnos: [] });
+      } else {
+        console.log('⚠️ [getTurnos] Admin sin áreas permitidas - no se aplicará filtro de área');
       }
     }
 
