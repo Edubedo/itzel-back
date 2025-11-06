@@ -451,18 +451,20 @@ const getTurnos = async (req, res) => {
   try {
     const user = req.user;
     let whereConditions = [];
-    const { sucursalId, areaId, estatus } = req.query;
+    const { sucursalId, areaId, estatus, dashboard } = req.query;
+    const esDashboard = dashboard === 'true';
     
     // Normalizar areaId - si está vacío o undefined, tratarlo como null
     const areaIdNormalizado = areaId && areaId.trim() !== '' ? areaId.trim() : null;
     console.log('🔍 [getTurnos] areaId recibido:', areaId, 'normalizado:', areaIdNormalizado);
-    console.log('🔍 [getTurnos] sucursalId:', sucursalId, 'tipoUsuario:', user?.tipo_usuario);
+    console.log('🔍 [getTurnos] sucursalId:', sucursalId, 'tipoUsuario:', user?.tipo_usuario, 'dashboard:', esDashboard);
     
     let replacements = {};
     let areasPermitidas = [];
 
     // Filtrar por áreas según tipo de usuario
-    if (user) {
+    // Si es dashboard, mostrar todos los turnos de la sucursal sin filtrar por áreas
+    if (user && !esDashboard) {
       const tipoUsuario = user.tipo_usuario;
 
       if (tipoUsuario === 1) {
@@ -542,6 +544,16 @@ const getTurnos = async (req, res) => {
       } else {
         console.log('⚠️ [getTurnos] Admin sin áreas permitidas - no se aplicará filtro de área');
       }
+    } else if (esDashboard) {
+      // Para dashboard, si se especifica un areaId, filtrar por esa área
+      // Si no, mostrar todas las áreas de la sucursal
+      if (areaIdNormalizado && sucursalId) {
+        console.log('📊 [getTurnos] Dashboard: Filtrando por área específica:', areaIdNormalizado);
+        whereConditions.push('ot.ck_area = :areaId');
+        replacements.areaId = areaIdNormalizado;
+      } else {
+        console.log('📊 [getTurnos] Dashboard: Mostrando todas las áreas de la sucursal');
+      }
     }
 
     if (sucursalId) {
@@ -556,7 +568,8 @@ const getTurnos = async (req, res) => {
 
     // Filtrar turnos: mostrar solo los que NO están asignados a otros usuarios
     // O los que están asignados al usuario actual
-    if (user) {
+    // EXCEPTO si es una petición del dashboard, donde mostramos TODOS los turnos
+    if (user && !esDashboard) {
       whereConditions.push(`(ot.ck_usuario_atendiendo IS NULL OR ot.ck_usuario_atendiendo = :userIdActual)`);
       replacements.userIdActual = user.uk_usuario;
     }
