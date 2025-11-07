@@ -2,9 +2,32 @@ const pdf = require('html-pdf-node');
 const path = require('path');
 const fs = require('fs');
 
-const generateTicketHTML = (ticketData) => {
-  const logoPath = path.join(__dirname, '../../public/images/logo.svg');
-  const logoBase64 = fs.readFileSync(logoPath, 'base64');
+const generateTicketHTML = (ticketData, logoUrl = null) => {
+  // Obtener el logo desde la configuración o usar uno por defecto
+  let logoSrc = '';
+  
+  // Función auxiliar para obtener logo por defecto
+  const getDefaultLogo = () => {
+    try {
+      const defaultLogoPath = path.join(__dirname, '../../public/images/logo.svg');
+      const defaultLogoBase64 = fs.readFileSync(defaultLogoPath, 'base64');
+      return `data:image/svg+xml;base64,${defaultLogoBase64}`;
+    } catch (error) {
+      console.error('Error leyendo logo por defecto:', error);
+      return '';
+    }
+  };
+  
+  if (logoUrl && logoUrl.startsWith('data:image')) {
+    // Si el logo viene en formato data URI desde la configuración, usarlo directamente
+    logoSrc = logoUrl;
+  } else if (logoUrl) {
+    // Si es una ruta (no debería pasar, pero por si acaso)
+    logoSrc = getDefaultLogo();
+  } else {
+    // Si no hay logo configurado, usar el logo por defecto
+    logoSrc = getDefaultLogo();
+  }
   
   const formatDate = (date) => {
     return new Date(date).toLocaleString('es-MX', {
@@ -223,9 +246,11 @@ const generateTicketHTML = (ticketData) => {
     <body>
         <div class="ticket">
             <div class="header">
+                ${logoSrc ? `
                 <div class="logo">
-                    <img src="data:image/svg+xml;base64,${logoBase64}" alt="Logo" />
+                    <img src="${logoSrc}" alt="Logo" />
                 </div>
+                ` : ''}
                 <h1>TICKET DE TURNO</h1>
                 <div class="subtitle">Sistema de Gestión de Turnos</div>
                 <div class="ticket-number">${ticketData.numeroTurno}</div>
@@ -289,9 +314,9 @@ const generateTicketHTML = (ticketData) => {
   `;
 };
 
-const generateTicketPDF = async (ticketData) => {
+const generateTicketPDF = async (ticketData, logoUrl = null) => {
   try {
-    const html = generateTicketHTML(ticketData);
+    const html = generateTicketHTML(ticketData, logoUrl);
     
     const options = {
       format: 'A4',

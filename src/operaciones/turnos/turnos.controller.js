@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const { generateTicketPDF } = require("../../utils/pdfGenerator");
 const RelacionEjecutivosSucursalesModel = require("../../models/relacion_ejecutivos_sucursales.model");
 const RelacionAsesoresSucursalesModel = require("../../models/relacion_asesores_sucursales.model");
+const ConfiguracionSistemaModel = require("../../models/configuracion_sistema.model");
 
 
 // Obtener todas las sucursales
@@ -820,6 +821,18 @@ const descargarTicketPDF = async (req, res) => {
 
     const turnoData = turno[0];
 
+    // Obtener configuración del sistema para el logo
+    let logoUrl = null;
+    try {
+      const configuracion = await ConfiguracionSistemaModel.findOne();
+      if (configuracion && configuracion.s_logo_light) {
+        logoUrl = configuracion.s_logo_light;
+      }
+    } catch (error) {
+      console.error('Error al obtener configuración para el logo:', error);
+      // Continuar sin logo si hay error
+    }
+
     // Preparar datos para el ticket
     const ticketData = {
       numeroTurno: turnoData.i_numero_turno,
@@ -833,7 +846,7 @@ const descargarTicketPDF = async (req, res) => {
     };
 
     // Generar PDF
-    const pdfBuffer = await generateTicketPDF(ticketData);
+    const pdfBuffer = await generateTicketPDF(ticketData, logoUrl);
 
     // Configurar headers para descarga
     res.setHeader('Content-Type', 'application/pdf');
