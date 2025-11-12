@@ -17,7 +17,8 @@ const {
   notificaciones,
   marcarLeida,
   cancelarTurno,
-  getTurnosPorArea
+  getTurnosPorArea,
+  getTurnosSemanalesEjecutivo
 } = require("./turnos.controller");
 const authMiddleware = require("../../../middlewares/authMiddleware");
 
@@ -50,6 +51,8 @@ router.put('/leer/:id', marcarLeida );
 
 //Estadisticas 
 router.get('/estadisticas', getEstadisticasTurnos);
+router.get('/ejecutivo/semanal', getTurnosSemanalesEjecutivo);
+
 
 
 module.exports = router;

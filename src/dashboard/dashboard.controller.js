@@ -152,5 +152,48 @@ exports.getTurnosPorAreaHoy = async (req, res) => {
     console.error("Error en getTurnosPorAreaHoy:", err);
     res.status(500).json({ success: false, message: err.message });
   }
+
 };
+
+//Turnos Cancelados y Atendidos
+ exports.getTurnosAtendidosCanceladosPorDia = async (req, res) => {
+  try {
+    const rows = await ConnectionDatabase.query(
+      `
+      SELECT 
+        ck_estatus,
+        COUNT(*) AS total
+      FROM operacion_turnos
+      WHERE DATE(d_fecha_creacion) = CURRENT_DATE
+      GROUP BY ck_estatus
+      `,
+      { type: QueryTypes.SELECT }
+    );
+
+    // Normalizar valores
+    const atendidos = rows.find(r => r.ck_estatus === "ATENDI")?.total || 0;
+    const cancelados = rows.find(r => r.ck_estatus === "CANCEL")?.total || 0;
+
+    res.json({
+      success: true,
+      data: {
+        labels: ["Hoy"],
+        series: [
+          {
+            name: "Atendidos",
+            data: [atendidos],
+          },
+          {
+            name: "Cancelados",
+            data: [cancelados],
+          },
+        ],
+      },
+    });
+  } catch (err) {
+    console.error("Error en getTurnosAtendidosCanceladosPorDia:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 

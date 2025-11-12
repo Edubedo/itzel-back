@@ -1023,6 +1023,57 @@ const getTurnosPorArea = async (req, res) => {
   }
 };
 
+// Obtener resumen semanal de turnos del ejecutivo autenticado
+const getTurnosSemanalesEjecutivo = async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user || user.tipo_usuario !== 2) {
+      return res.status(403).json({ success: false, message: "No autorizado" });
+    }
+
+    const ejecutivoId = user.uk_usuario;
+
+    // Consulta semanal: cuenta atendidos y cancelados por día
+    const resultados = await ConnectionDatabase.query(`
+      SELECT 
+        DAYNAME(d_fecha_creacion) AS dia,
+        SUM(CASE WHEN ck_estatus = 'ATENDI' THEN 1 ELSE 0 END) AS atendidos,
+        SUM(CASE WHEN ck_estatus = 'CANCEL' THEN 1 ELSE 0 END) AS cancelados
+      FROM operacion_turnos
+      WHERE ck_usuario_atendio = :ejecutivoId
+        AND YEARWEEK(d_fecha_creacion, 1) = YEARWEEK(CURDATE(), 1)
+      GROUP BY dia
+      ORDER BY FIELD(dia, 'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday');
+    `, {
+      replacements: { ejecutivoId },
+      type: QueryTypes.SELECT,
+    });
+
+    // Traducción de los días al español
+    const diasTraducidos = {
+      Monday: "Lunes",
+      Tuesday: "Martes",
+      Wednesday: "Miércoles",
+      Thursday: "Jueves",
+      Friday: "Viernes",
+      Saturday: "Sábado",
+      Sunday: "Domingo",
+    };
+
+    const datos = resultados.map(r => ({
+      dia: diasTraducidos[r.dia] || r.dia,
+      atendidos: parseInt(r.atendidos || 0),
+      cancelados: parseInt(r.cancelados || 0),
+    }));
+
+    res.json({ success: true, datos });
+  } catch (error) {
+    console.error("Error al obtener turnos semanales del ejecutivo:", error);
+    res.status(500).json({ success: false, message: "Error al obtener datos" });
+  }
+};
+
+
 module.exports = {
   getSucursales,
   getSucursalesPorUsuario,
@@ -1038,6 +1089,7 @@ module.exports = {
   notificaciones,
   marcarLeida,
   cancelarTurno,
-  getTurnosPorArea
+  getTurnosPorArea,
+  getTurnosSemanalesEjecutivo
 };
   
