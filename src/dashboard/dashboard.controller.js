@@ -154,9 +154,36 @@ exports.getTurnosPorAreaHoy = async (req, res) => {
   }
 
 };
+exports.getAreasFrecuentadasHoy = async (req, res) => {
+  try {
+    const rows = await ConnectionDatabase.query(
+      `
+      SELECT 
+        a.s_area AS area,
+        COUNT(t.ck_turno) AS visitas
+      FROM operacion_turnos t
+      JOIN catalogo_area a ON a.ck_area = t.ck_area
+      WHERE DATE(t.d_fecha_creacion) = CURRENT_DATE
+      GROUP BY a.s_area
+      ORDER BY visitas DESC
+      `,
+      { type: QueryTypes.SELECT }
+    );
+
+
+    res.json({
+      success: true,
+      data: rows,
+    });
+
+  } catch (error) {
+    console.error("Error en getAreasFrecuentadasHoy:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 //Turnos Cancelados y Atendidos
- exports.getTurnosAtendidosCanceladosPorDia = async (req, res) => {
+exports.getTurnosAtendidosCanceladosPorDia = async (req, res) => {
   try {
     const rows = await ConnectionDatabase.query(
       `
@@ -195,5 +222,6 @@ exports.getTurnosPorAreaHoy = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 
