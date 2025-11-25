@@ -8,6 +8,7 @@ const {
   getClientesDelDia,
   getEstadisticasTurnosMensuales,
   getTurnosPorAreaHoy,
+  getAreasFrecuentadasHoy,
   getTurnosAtendidosCanceladosPorDia,
 } = require("./dashboard.controller");
 
@@ -17,7 +18,9 @@ router.get("/servicios-mensuales", getServiciosMensuales);
 router.get("/clientes/del-dia", getClientesDelDia);
 router.get("/turnos/estadisticas-mensuales", getEstadisticasTurnosMensuales);
 router.get("/turnos/por-area/hoy", getTurnosPorAreaHoy);
+router.get("/areas/mas-frecuentadas/hoy", getAreasFrecuentadasHoy);
 router.get("/turnos/atendidos-cancelados-dia", getTurnosAtendidosCanceladosPorDia);
+
 
 
 module.exports = router;
