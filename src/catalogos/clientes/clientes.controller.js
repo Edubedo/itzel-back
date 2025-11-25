@@ -429,7 +429,17 @@ const validateContractNumber = async (req, res) => {
         if (!c_codigo_contrato) {
             return res.status(400).json({
                 success: false,
-                message: 'El número de contrato es requerido'
+                message: 'El número de contrato es requerido',
+                code: 'INVALID_CONTRACT'
+            });
+        }
+
+        // Validar formato básico del número de contrato (opcional, ajusta según tus necesidades)
+        if (c_codigo_contrato.trim().length < 3) {
+            return res.status(400).json({
+                success: false,
+                message: 'El formato del número de contrato no es válido',
+                code: 'INVALID_CONTRACT'
             });
         }
 
@@ -454,7 +464,8 @@ const validateContractNumber = async (req, res) => {
         if (!cliente) {
             return res.status(404).json({
                 success: false,
-                message: 'Número de contrato no encontrado o cliente inactivo'
+                message: 'El número de contrato no se encuentra registrado en el sistema',
+                code: 'CONTRACT_NOT_FOUND'
             });
         }
 
