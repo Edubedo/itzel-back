@@ -443,11 +443,11 @@ const validateContractNumber = async (req, res) => {
             });
         }
 
-        // Buscar usando RTRIM para manejar espacios en campos CHAR
+        // Buscar usando RTRIM 
         const cliente = await CatalogoClientesModel.findOne({
             where: { 
                 [Op.and]: [
-                    literal(`RTRIM(c_codigo_contrato) = '${c_codigo_contrato.trim()}'`),
+                    literal(`RTRIM(c_codigo_cliente) = '${c_codigo_contrato.trim()}'`),
                     { ck_estatus: 'ACTIVO' }
                 ]
             },
