@@ -443,9 +443,12 @@ const validateContractNumber = async (req, res) => {
             });
         }
 
+        // Buscar con LIKE para manejar espacios en campos CHAR
         const cliente = await CatalogoClientesModel.findOne({
             where: { 
-                c_codigo_contrato,
+                c_codigo_contrato: {
+                    [Op.like]: c_codigo_contrato.trim() + '%'
+                },
                 ck_estatus: 'ACTIVO'
             },
             attributes: [
