@@ -1,5 +1,5 @@
 const CatalogoClientesModel = require('../../models/clientes.model');
-const { Op } = require('sequelize');
+const { Op, literal } = require('sequelize');
 
 // Obtener todos los clientes con filtros y paginación
 const getAllClientes = async (req, res) => {
@@ -443,13 +443,13 @@ const validateContractNumber = async (req, res) => {
             });
         }
 
-        // Buscar con LIKE para manejar espacios en campos CHAR
+        // Buscar usando RTRIM para manejar espacios en campos CHAR
         const cliente = await CatalogoClientesModel.findOne({
             where: { 
-                c_codigo_contrato: {
-                    [Op.like]: c_codigo_contrato.trim() + '%'
-                },
-                ck_estatus: 'ACTIVO'
+                [Op.and]: [
+                    literal(`RTRIM(c_codigo_contrato) = '${c_codigo_contrato.trim()}'`),
+                    { ck_estatus: 'ACTIVO' }
+                ]
             },
             attributes: [
                 'ck_cliente',
