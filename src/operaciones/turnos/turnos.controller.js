@@ -223,7 +223,7 @@ const getAreasPorUsuario = async (req, res) => {
           order: [['s_area', 'ASC']]
         });
       }
-    } else if (tipoUsuario === 4) {
+    } else if (tipoUsuario === 3) {
       // Asesor: todas las áreas de la sucursal asignada
       const relacion = await RelacionAsesoresSucursalesModel.findOne({
         where: { 
@@ -287,7 +287,7 @@ const getSucursalesPorUsuario = async (req, res) => {
       return res.status(401).json({ success: false, message: 'No autenticado' });
     }
 
-    const tipoUsuario = user.tipo_usuario; // 1 admin, 2 ejecutivo, 4 asesor, etc.
+    const tipoUsuario = user.tipo_usuario; // 1 admin, 2 ejecutivo, 3 asesor, etc.
 
     if (tipoUsuario === 1) {
       // Administrador: todas
@@ -306,7 +306,7 @@ const getSucursalesPorUsuario = async (req, res) => {
         attributes: ['ck_sucursal']
       });
       sucursalIds = [...new Set(relaciones.map(r => r.ck_sucursal).filter(Boolean))];
-    } else if (tipoUsuario === 4) {
+    } else if (tipoUsuario === 3) {
       // Asesor
       const relaciones = await RelacionAsesoresSucursalesModel.findAll({
         where: { ck_usuario: user.uk_usuario, ck_estatus: 'ACTIVO' },
@@ -542,7 +542,7 @@ const getTurnos = async (req, res) => {
           });
           areasPermitidas = [...new Set(relaciones.map(r => r.ck_area).filter(Boolean))];
         }
-      } else if (tipoUsuario === 4) {
+      } else if (tipoUsuario === 3) {
         // Asesor: todas las áreas de su sucursal
         if (sucursalId) {
           const relacion = await RelacionAsesoresSucursalesModel.findOne({
@@ -1052,7 +1052,7 @@ const getTurnosPorArea = async (req, res) => {
         attributes: ['ck_area']
       });
       areasIds = [...new Set(relaciones.map(r => r.ck_area).filter(Boolean))];
-    } else if (tipoUsuario === 4) {
+    } else if (tipoUsuario === 3) {
       // Asesor: todas las áreas de su sucursal
       const relacion = await RelacionAsesoresSucursalesModel.findOne({
         where: { 
