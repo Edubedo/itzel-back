@@ -1,13 +1,11 @@
 const nodemailer = require('nodemailer');
 
-// Configuración del transporter
+// Configuración del transporter usando la misma configuración que funciona en password recovery
 const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: process.env.EMAIL_PORT || 587,
-    secure: false, // true para 465, false para otros puertos
+    service: 'gmail',
     auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD
+        user: process.env.GMAIL_USER, // Correo Gmail
+        pass: process.env.GMAIL_PASS  // Contraseña de aplicación
     }
 });
 
@@ -448,7 +446,7 @@ const sendVerificationEmail = async (email, nombre, verificationToken) => {
         const verificationUrl = `${process.env.FRONTEND_URL || 'https://sistemaitzel.site'}/verificar-email?token=${verificationToken}`;
 
         const mailOptions = {
-            from: `"Sistema de Gestión" <${process.env.EMAIL_USER}>`,
+            from: `"ITZEL" <${process.env.GMAIL_USER}>`,
             to: email,
             subject: '✓ Verifica tu correo electrónico - Completa tu registro',
             html: getVerificationEmailTemplate(nombre, verificationUrl)

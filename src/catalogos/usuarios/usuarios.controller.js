@@ -450,9 +450,9 @@ const getUsuariosStats = async (req, res) => {
 
 // Verificar correo electrónico con token
 const verifyEmail = async (req, res) => {
+    const { token } = req.query;
+    
     try {
-        const { token } = req.query;
-
         if (!token) {
             return res.status(400).json({
                 success: false,
@@ -468,14 +468,22 @@ const verifyEmail = async (req, res) => {
         });
 
         if (!usuario) {
-            return res.status(404).json({
+            return res.status(400).json({
                 success: false,
                 message: 'Token de verificación inválido'
             });
         }
 
+        if (!usuario.verification_token || !usuario.verification_token_expires) {
+            return res.status(400).json({
+                success: false,
+                message: 'Solicitud inválida. Por favor solicita un nuevo correo de verificación.'
+            });
+        }
+
         // Verificar si el token ha expirado
-        if (usuario.verification_token_expires && new Date() > new Date(usuario.verification_token_expires)) {
+        const now = new Date();
+        if (now > usuario.verification_token_expires) {
             return res.status(400).json({
                 success: false,
                 message: 'El token de verificación ha expirado. Por favor, solicita un nuevo correo de verificación.'
@@ -483,7 +491,7 @@ const verifyEmail = async (req, res) => {
         }
 
         // Verificar si ya está verificado
-        if (usuario.ck_estatus.trim() === 'ACTIVO') {
+        if (usuario.ck_estatus && usuario.ck_estatus.trim() === 'ACTIVO') {
             return res.status(200).json({
                 success: true,
                 message: 'Este correo electrónico ya ha sido verificado anteriormente.',
@@ -492,20 +500,13 @@ const verifyEmail = async (req, res) => {
         }
 
         // Actualizar usuario a ACTIVO y limpiar token
-        await ConfiguracionUsuariosModel.update(
-            {
-                ck_estatus: 'ACTIVO',
-                verification_token: null,
-                verification_token_expires: null
-            },
-            {
-                where: { ck_usuario: usuario.ck_usuario }
-            }
-        );
+        await usuario.update({
+            ck_estatus: 'ACTIVO',
+            verification_token: null,
+            verification_token_expires: null
+        });
 
-        console.log(`✓ Usuario verificado: ${usuario.s_correo_electronico}`);
-
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             message: '¡Correo electrónico verificado exitosamente! Tu cuenta ha sido activada.',
             data: {
@@ -515,11 +516,10 @@ const verifyEmail = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error al verificar correo:', error);
-        res.status(500).json({
+        console.error('[VERIFY EMAIL] Error:', error);
+        return res.status(500).json({
             success: false,
-            message: 'Error interno del servidor',
-            error: error.message
+            message: 'Error al verificar el correo electrónico'
         });
     }
 };
