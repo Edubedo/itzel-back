@@ -60,20 +60,6 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10mb' })); 
 app.use(express.text({ limit: '10mb' })); 
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Middleware para capturar errores de parsing del body
-app.use((err, req, res, next) => {
-    if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
-        console.error('[BODY PARSER] Error de sintaxis en el cuerpo de la solicitud:', err.message);
-        console.error('[BODY PARSER] URL:', req.url);
-        console.error('[BODY PARSER] Método:', req.method);
-        return res.status(400).json({ 
-            message: 'Error al procesar el cuerpo de la solicitud. Verifica que sea un JSON válido.',
-            error: process.env.NODE_ENV !== 'production' ? err.message : undefined
-        });
-    }
-    next(err);
-});
 app.use(express.static('storage')); // Para poder acceder a la carpeta storage directamente
 app.use('/usuarios', express.static('storage/usuarios')); // Servir imágenes de usuarios
 app.use('/public', express.static('public')); // Servir archivos públicos (logos, etc.)
