@@ -413,7 +413,35 @@ const crearTurno = async (req, res) => {
       });
     }
 
-    // Obtener el siguiente número de turno para la sucursal y área
+    // Obtener el código del servicio
+    const servicio = await CatalogoServiciosModel.findByPk(ck_servicio);
+    if (!servicio) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Servicio no encontrado' 
+      });
+    }
+
+    const codigoServicio = servicio.c_codigo_servicio || 'SERV';
+    
+    // Obtener el contador consecutivo de turnos para este servicio en el día actual
+    const turnosServicio = await ConnectionDatabase.query(`
+      SELECT COUNT(*) as total_turnos
+      FROM operacion_turnos 
+      WHERE ck_servicio = :servicioId
+        AND ck_sucursal = :sucursalId
+        AND DATE(d_fecha_creacion) = CURRENT_DATE
+    `, {
+      replacements: { servicioId: ck_servicio, sucursalId: ck_sucursal },
+      type: QueryTypes.SELECT,
+    });
+
+    const contadorServicio = (parseInt(turnosServicio[0]?.total_turnos || 0)) + 1;
+    
+    // Generar código especial del turno: CODIGO_SERVICIO + contador consecutivo
+    const codigoTurno = `${codigoServicio}-${String(contadorServicio).padStart(4, '0')}`;
+
+    // Obtener el siguiente número de turno para la sucursal y área (mantener para compatibilidad)
     const ultimoTurno = await ConnectionDatabase.query(`
       SELECT COALESCE(MAX(i_numero_turno), 0) as ultimo_numero
       FROM operacion_turnos 
@@ -451,6 +479,7 @@ const crearTurno = async (req, res) => {
       ck_servicio,
       ck_cliente: es_cliente ? ck_cliente : null,
       i_numero_turno: numeroTurno,
+      c_codigo_turno: codigoTurno,
       ck_estatus: 'ACTIVO',
       i_seccion: 1,
       t_tiempo_espera: mexicoTime,
@@ -463,11 +492,13 @@ const crearTurno = async (req, res) => {
       SELECT 
         ot.ck_turno,
         ot.i_numero_turno,
+        ot.c_codigo_turno,
         ot.ck_estatus,
         ot.t_tiempo_espera,
         ca.s_area,
         ca.c_codigo_area,
         cs.s_servicio,
+        cs.c_codigo_servicio,
         su.s_nombre_sucursal,
         su.s_domicilio
       FROM operacion_turnos ot
@@ -644,12 +675,14 @@ const getTurnos = async (req, res) => {
         su.s_nombre_sucursal,
         su.s_domicilio,
         ot.i_numero_turno,
+        ot.c_codigo_turno,
         ot.t_tiempo_espera,
         ot.t_tiempo_atendido,
         ot.d_fecha_atendido,
         ot.ck_usuario_atendio,
         ot.ck_usuario_atendiendo,
         cs.s_servicio,
+        cs.c_codigo_servicio,
         cu.s_nombre as nombre_asesor,
         cu_atendiendo.s_nombre as nombre_usuario_atendiendo
       FROM operacion_turnos ot
@@ -849,10 +882,12 @@ const descargarTicketPDF = async (req, res) => {
       SELECT 
         ot.ck_turno,
         ot.i_numero_turno,
+        ot.c_codigo_turno,
         ot.ck_estatus,
         ot.d_fecha_creacion,
         ca.s_area,
         cs.s_servicio,
+        cs.c_codigo_servicio,
         su.s_nombre_sucursal,
         su.s_domicilio,
         CASE 
@@ -932,7 +967,9 @@ const notificaciones = async (req, res) => {
       SELECT 
         ot.ck_turno AS id,
         ot.i_numero_turno AS numero_turno,
+        ot.c_codigo_turno AS codigo_turno,
         cs.s_servicio AS servicio,
+        cs.c_codigo_servicio AS codigo_servicio,
         ca.s_area AS area,
         ot.d_fecha_creacion AS fecha,
         ot.ck_sucursal,
@@ -954,9 +991,11 @@ const notificaciones = async (req, res) => {
     const formatted = turnos.map(t => ({
       id: t.id,
       numero_turno: t.numero_turno,        // ahora trae número correcto
+      codigo_turno: t.codigo_turno,       // código especial del turno
+      codigo_servicio: t.codigo_servicio,  // código del servicio
       s_servicio: t.servicio,
       s_area: t.area,
-      mensaje: `Turno ${t.numero_turno} en ${t.servicio} (${t.area})`,
+      mensaje: `Turno ${t.codigo_turno || t.numero_turno} en ${t.servicio} (${t.area})`,
       fecha: t.fecha,                       // sin toISOString(), formatear en front
       ck_sucursal: t.ck_sucursal,
       s_nombre_sucursal: t.sucursal,
