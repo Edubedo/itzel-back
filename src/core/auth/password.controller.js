@@ -77,39 +77,63 @@ exports.forgotPassword = async (req, res) => {
 exports.verifyCode = async (req, res) => {
   try {
     console.log(`[VERIFY CODE] ========== INICIO VERIFICACIÓN ==========`);
+    console.log(`[VERIFY CODE] Método HTTP: ${req.method}`);
+    console.log(`[VERIFY CODE] URL: ${req.url}`);
     console.log(`[VERIFY CODE] Body completo recibido:`, JSON.stringify(req.body, null, 2));
-    console.log(`[VERIFY CODE] Headers:`, req.headers);
+    console.log(`[VERIFY CODE] Body tipo: ${typeof req.body}`);
+    console.log(`[VERIFY CODE] Body es objeto: ${req.body instanceof Object}`);
+    console.log(`[VERIFY CODE] Headers:`, JSON.stringify(req.headers, null, 2));
+    console.log(`[VERIFY CODE] Content-Type: ${req.headers['content-type']}`);
+    
+    // Verificar que el método sea POST
+    if (req.method !== 'POST') {
+      console.log(`[VERIFY CODE] ❌ Método incorrecto: ${req.method}. Se requiere POST.`);
+      return res.status(405).json({ 
+        message: `Método ${req.method} no permitido. Este endpoint solo acepta solicitudes POST.` 
+      });
+    }
     
     const { email, code, newPassword } = req.body;
     
-    // Validar que todos los campos requeridos estén presentes
-    if (!email || !code || !newPassword) {
-      console.log(`[VERIFY CODE] ❌ Faltan campos requeridos`);
-      console.log(`[VERIFY CODE] - email: ${email ? '✓' : '✗'}`);
-      console.log(`[VERIFY CODE] - code: ${code ? '✓' : '✗'}`);
-      console.log(`[VERIFY CODE] - newPassword: ${newPassword ? '✓' : '✗'}`);
+    // Validar que todos los campos requeridos estén presentes y no sean strings vacíos
+    const emailTrimmed = email ? String(email).trim() : '';
+    const codeTrimmed = code ? String(code).trim() : '';
+    const newPasswordTrimmed = newPassword ? String(newPassword).trim() : '';
+    
+    if (!emailTrimmed || !codeTrimmed || !newPasswordTrimmed) {
+      console.log(`[VERIFY CODE] ❌ Faltan campos requeridos o están vacíos`);
+      console.log(`[VERIFY CODE] - email: "${email}" (trimmed: "${emailTrimmed}") ${emailTrimmed ? '✓' : '✗'}`);
+      console.log(`[VERIFY CODE] - code: "${code}" (trimmed: "${codeTrimmed}") ${codeTrimmed ? '✓' : '✗'}`);
+      console.log(`[VERIFY CODE] - newPassword: ${newPassword ? '***' : 'no proporcionada'} (trimmed: ${newPasswordTrimmed ? '***' : 'vacío'}) ${newPasswordTrimmed ? '✓' : '✗'}`);
       return res.status(400).json({ 
         message: "Faltan campos requeridos. Por favor proporciona email, código y nueva contraseña." 
       });
     }
     
-    console.log(`[VERIFY CODE] Email: ${email}`);
-    console.log(`[VERIFY CODE] Código recibido: "${code}" (tipo: ${typeof code})`);
-    console.log(`[VERIFY CODE] Nueva contraseña: ${newPassword ? '***' : 'no proporcionada'}`);
+    // Usar los valores normalizados
+    const emailNormalized = emailTrimmed.toLowerCase();
+    const codeNormalized = codeTrimmed;
+    
+    console.log(`[VERIFY CODE] Email (normalizado): ${emailNormalized}`);
+    console.log(`[VERIFY CODE] Código recibido: "${codeNormalized}" (tipo: ${typeof codeNormalized}, longitud: ${codeNormalized.length})`);
+    console.log(`[VERIFY CODE] Nueva contraseña: ${newPasswordTrimmed ? '***' : 'no proporcionada'} (longitud: ${newPasswordTrimmed.length})`);
     
     // Usar consulta raw para obtener los datos directamente de la BD sin interpretación de Sequelize
     const { ConnectionDatabase } = require('../../config/connectDatabase');
     const { QueryTypes } = require('sequelize');
     
+    console.log(`[VERIFY CODE] Ejecutando consulta SQL para email: ${emailNormalized}`);
     const rawUser = await ConnectionDatabase.query(
       `SELECT reset_code, reset_code_expires, ck_usuario, s_password 
        FROM configuracion_usuarios 
        WHERE s_correo_electronico = :email`,
       {
-        replacements: { email },
+        replacements: { email: emailNormalized },
         type: QueryTypes.SELECT
       }
     );
+    
+    console.log(`[VERIFY CODE] Resultado de consulta SQL: ${rawUser ? rawUser.length : 0} registros encontrados`);
 
     if (!rawUser || rawUser.length === 0) {
       console.log(`[VERIFY CODE] ❌ Usuario no encontrado en BD: ${email}`);
@@ -128,7 +152,7 @@ exports.verifyCode = async (req, res) => {
     
     // También obtener el usuario con Sequelize para poder actualizarlo después
     const usuario = await ConfiguracionUsuariosModel.findOne({
-      where: { s_correo_electronico: email }
+      where: { s_correo_electronico: emailNormalized }
     });
 
     if (!usuario) {
@@ -146,7 +170,7 @@ exports.verifyCode = async (req, res) => {
     
     // Convertir a string y normalizar
     storedCode = String(storedCode).trim().replace(/^0+/, ''); // Eliminar ceros a la izquierda
-    const receivedCode = String(code || '').trim().replace(/^0+/, ''); // Eliminar ceros a la izquierda
+    const receivedCode = codeNormalized.replace(/^0+/, ''); // Eliminar ceros a la izquierda (ya está trimmed)
     
     console.log(`[VERIFY CODE] Comparando códigos:`);
     console.log(`[VERIFY CODE] - Código en BD (normalizado): "${storedCode}"`);
@@ -214,14 +238,14 @@ exports.verifyCode = async (req, res) => {
     console.log(`[VERIFY CODE] Cambiando contraseña...`);
 
     // Cambia la contraseña
-    const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    const hashedPassword = await bcrypt.hash(newPasswordTrimmed, SALT_ROUNDS);
     await usuario.update({
       s_password: hashedPassword,
       reset_code: null,
       reset_code_expires: null
     });
 
-    console.log(`[VERIFY CODE] ✅ Contraseña cambiada exitosamente para: ${email}`);
+    console.log(`[VERIFY CODE] ✅ Contraseña cambiada exitosamente para: ${emailNormalized}`);
     console.log(`[VERIFY CODE] ========== FIN VERIFICACIÓN EXITOSA ==========`);
     return res.status(200).json({ message: "Contraseña cambiada exitosamente" });
   } catch (error) {
