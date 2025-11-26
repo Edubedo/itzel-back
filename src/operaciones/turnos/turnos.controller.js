@@ -10,66 +10,46 @@ const RelacionEjecutivosSucursalesModel = require("../../models/relacion_ejecuti
 const RelacionAsesoresSucursalesModel = require("../../models/relacion_asesores_sucursales.model");
 const ConfiguracionSistemaModel = require("../../models/configuracion_sistema.model");
 
-// Helper function para obtener fecha y hora actual desde la base de datos (respeta timezone configurado)
-const getDatabaseDateTime = async () => {
+// Helper function para obtener hora actual en formato TIME de México
+const getMexicoTime = async () => {
   try {
-    // Usar CURRENT_TIMESTAMP AT TIME ZONE para PostgreSQL
-    // Esto garantiza que siempre obtengamos la hora en la zona horaria configurada
+    // Obtener hora actual en formato TIME directamente desde PostgreSQL con timezone
     const result = await ConnectionDatabase.query(
-      "SELECT CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City' as current_time",
+      "SELECT TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City', 'HH24:MI:SS') as current_time",
+      { type: QueryTypes.SELECT }
+    );
+    return result[0].current_time;
+  } catch (error) {
+    console.error('Error obteniendo hora de BD:', error);
+    // Fallback: calcular manualmente
+    const now = new Date();
+    const utcHours = now.getUTCHours();
+    const utcMinutes = now.getUTCMinutes();
+    const utcSeconds = now.getUTCSeconds();
+    
+    // Restar 6 horas para México (GMT-6)
+    let mexicoHours = utcHours - 6;
+    if (mexicoHours < 0) mexicoHours += 24;
+    
+    return `${String(mexicoHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}:${String(utcSeconds).padStart(2, '0')}`;
+  }
+};
+
+// Helper function para obtener fecha y hora actual de México como Date
+const getMexicoDateTime = async () => {
+  try {
+    const result = await ConnectionDatabase.query(
+      "SELECT (CURRENT_TIMESTAMP AT TIME ZONE 'America/Mexico_City')::timestamp as current_time",
       { type: QueryTypes.SELECT }
     );
     return new Date(result[0].current_time);
   } catch (error) {
     console.error('Error obteniendo fecha de BD:', error);
-    // Fallback: usar NOW() simple que respeta la configuración de Sequelize
-    try {
-      const result = await ConnectionDatabase.query(
-        'SELECT NOW() as current_time',
-        { type: QueryTypes.SELECT }
-      );
-      return new Date(result[0].current_time);
-    } catch (fallbackError) {
-      console.error('Error en fallback:', fallbackError);
-      // Último recurso: calcular manualmente
-      const now = new Date();
-      const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
-      const mexicoTime = new Date(utcTime - (6 * 60 * 60 * 1000)); // GMT-6
-      return mexicoTime;
-    }
-  }
-};
-
-// Helper function para formatear hora en formato HH:MM:SS desde Date
-const formatTime = (date) => {
-  const d = new Date(date);
-  const hours = String(d.getHours()).padStart(2, '0');
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  const seconds = String(d.getSeconds()).padStart(2, '0');
-  return `${hours}:${minutes}:${seconds}`;
-};
-
-// Endpoint de prueba para verificar timezone (NO afecta turnos reales)
-const testTimezone = async (req, res) => {
-  try {
-    const dbTime = await getDatabaseDateTime();
-    const jsTime = new Date();
-    
-    res.json({
-      success: true,
-      message: 'Prueba de zona horaria',
-      database_time: dbTime,
-      database_time_formatted: formatTime(dbTime),
-      javascript_time: jsTime,
-      javascript_time_formatted: formatTime(jsTime),
-      timezone_config: '-06:00 (Mexico)',
-      note: 'database_time debería mostrar hora de México (GMT-6)'
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    // Fallback: calcular manualmente
+    const now = new Date();
+    const utcTime = now.getTime();
+    const mexicoTime = new Date(utcTime - (6 * 60 * 60 * 1000)); // GMT-6
+    return mexicoTime;
   }
 };
 
@@ -457,10 +437,11 @@ const crearTurno = async (req, res) => {
       ck_estatus: 'ACTIVO',
       i_seccion: 1,
     })
-    // Obtener fecha y hora actual desde la base de datos (respeta timezone)
-    const currentTime = await getDatabaseDateTime();
-    console.log('🕐 Hora actual del sistema:', currentTime);
-    console.log('🕐 Hora formateada:', formatTime(currentTime));
+    // Obtener hora y fecha actual de México
+    const mexicoTime = await getMexicoTime();
+    const mexicoDateTime = await getMexicoDateTime();
+    console.log('🕐 Hora de México:', mexicoTime);
+    console.log('📅 Fecha/Hora de México:', mexicoDateTime);
     
     // Crear el turno
     const nuevoTurno = await OperacionTurnosModel.create({
@@ -472,8 +453,8 @@ const crearTurno = async (req, res) => {
       i_numero_turno: numeroTurno,
       ck_estatus: 'ACTIVO',
       i_seccion: 1,
-      t_tiempo_espera: formatTime(currentTime),
-      d_fecha_creacion: currentTime
+      t_tiempo_espera: mexicoTime,
+      d_fecha_creacion: mexicoDateTime
     });
 
     console.log("nuevoTurno: ", nuevoTurno)
@@ -731,11 +712,11 @@ const atenderTurno = async (req, res) => {
       });
     }
 
-    // Obtener fecha y hora actual desde la base de datos (respeta timezone)
-    const currentTime = await getDatabaseDateTime();
+    // Obtener fecha y hora actual de México
+    const mexicoDateTime = await getMexicoDateTime();
     
     turno.ck_estatus = 'PROCES';
-    turno.d_fecha_atendido = currentTime;
+    turno.d_fecha_atendido = mexicoDateTime;
     turno.ck_usuario_atendio = ck_usuario_atendio || user.uk_usuario;
     turno.ck_usuario_atendiendo = user.uk_usuario; // Asignar al usuario que está atendiendo
     
@@ -777,13 +758,13 @@ const finalizarTurno = async (req, res) => {
       });
     }
 
-    // Obtener fecha y hora actual desde la base de datos (respeta timezone)
-    const currentTime = await getDatabaseDateTime();
+    // Obtener fecha y hora actual de México
+    const mexicoDateTime = await getMexicoDateTime();
     
     // Calcular tiempo de atención
     if (turno.d_fecha_atendido) {
       const tiempoInicio = new Date(turno.d_fecha_atendido);
-      const tiempoFin = new Date(currentTime);
+      const tiempoFin = mexicoDateTime;
       const diffMs = tiempoFin - tiempoInicio;
       const horas = Math.floor(diffMs / 3600000);
       const minutos = Math.floor((diffMs % 3600000) / 60000);
