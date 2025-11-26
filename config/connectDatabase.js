@@ -38,10 +38,12 @@ const ConnectionDatabase = new Sequelize(NAME_DEV, USER_DEV, PASSWORD_DEV, {
     port: PORT_DEV,
     // quitar que se vean los queries
     logging: false,
-    timezone: '-06:00', // ⬅️ zona horaria de Monterrey (México)
+    // Usar UTC para evitar problemas de zona horaria entre local y producción
+    timezone: '+00:00', // UTC - consistente en todos los ambientes
     dialectOptions: {
-        timezone: 'local',
-        dateStrings: true,
+        // Para MySQL, usar UTC también
+        timezone: '+00:00',
+        dateStrings: false, // Dejar que Sequelize maneje las fechas como objetos Date
         typeCast: true
       },
 });
