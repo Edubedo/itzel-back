@@ -34,9 +34,6 @@ router.use("/catalogos/sucursales", require("../src/catalogos/sucursales/sucursa
 // RUTA PARA CLIENTES
 router.use("/catalogos/clientes", require("../src/catalogos/clientes/clientes.router"));
 
-// RUTA PARA RECUPERAR CONTRASEÑA
-router.use("/auth", require("../src/core/auth/auth.router"));
-
 // RUTA PARA BÚSQUEDA GENERAL
 router.use("/", require("./busquedaGeneral"));
 
