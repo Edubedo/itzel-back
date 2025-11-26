@@ -37,11 +37,6 @@ const OperacionTurnosModel = ConnectionDatabase.define('OperacionTurnosModel', {
         type: DataTypes.INTEGER(16),
         allowNull: true
     },
-    c_codigo_turno: {
-        type: DataTypes.STRING(20),
-        allowNull: true,
-        comment: 'Código especial del turno basado en el código del servicio con contador consecutivo'
-    },
     t_tiempo_espera: {
         type: DataTypes.TIME(),
         allowNull: true
