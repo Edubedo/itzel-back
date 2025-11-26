@@ -705,7 +705,8 @@ const atenderTurno = async (req, res) => {
     }
 
     // Verificar que el turno no esté asignado a otro usuario
-    if (turno.ck_usuario_atendiendo && turno.ck_usuario_atendiendo !== user.uk_usuario) {
+    // EXCEPTO si es administrador (tipo 1), quien puede atender cualquier turno
+    if (user.tipo_usuario !== 1 && turno.ck_usuario_atendiendo && turno.ck_usuario_atendiendo !== user.uk_usuario) {
       return res.status(400).json({ 
         success: false, 
         message: 'Este turno ya está siendo atendido por otro empleado' 
@@ -751,7 +752,8 @@ const finalizarTurno = async (req, res) => {
     }
 
     // Verificar que el usuario que finaliza sea el que está atendiendo
-    if (user && turno.ck_usuario_atendiendo && turno.ck_usuario_atendiendo !== user.uk_usuario) {
+    // EXCEPTO si es administrador (tipo 1), quien puede finalizar cualquier turno
+    if (user && user.tipo_usuario !== 1 && turno.ck_usuario_atendiendo && turno.ck_usuario_atendiendo !== user.uk_usuario) {
       return res.status(403).json({ 
         success: false, 
         message: 'No tiene permiso para finalizar este turno' 
